@@ -38,6 +38,7 @@ const running = (): Overview => ({
 })
 beforeEach(() => {
   vi.useFakeTimers()
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
   location.hash = '#overview'
   vi.stubGlobal('scrollTo', vi.fn())
   Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
@@ -87,7 +88,7 @@ describe('workspace integration', () => {
     ).toBe(true)
     populated = true
     await act(async () => {
-      vi.advanceTimersByTime(4000)
+      vi.advanceTimersByTime(30000)
     })
     expect(screen.getByText('Chart ready')).toBeTruthy()
     expect((screen.getByRole('combobox', { name: '走勢標的' }) as HTMLSelectElement).value).toBe(
@@ -139,7 +140,7 @@ describe('workspace integration', () => {
     render(<App />)
     await flush()
     await act(async () => {
-      vi.advanceTimersByTime(4000)
+      vi.advanceTimersByTime(30000)
     })
     fireEvent.click(screen.getByRole('button', { name: '更新行情' }))
     await flush()
@@ -152,14 +153,14 @@ describe('workspace integration', () => {
     expect(screen.getByText('0 檔持股 · 77 檔觀察')).toBeTruthy()
   })
 
-  it('does not restart an in-flight poll every four seconds', async () => {
+  it('does not restart an in-flight request during idle polling', async () => {
     const pending = deferred<Response>()
     const fetcher = vi.fn().mockReturnValue(pending.promise)
     vi.stubGlobal('fetch', fetcher)
     render(<App />)
     await flush()
     await act(async () => {
-      vi.advanceTimersByTime(12000)
+      vi.advanceTimersByTime(90000)
     })
     expect(fetcher).toHaveBeenCalledTimes(1)
     await act(async () => {
@@ -376,5 +377,129 @@ describe('portfolio valuation coverage', () => {
     expect(screen.getByText(/持股總市值/).parentElement?.querySelector('h2')?.textContent).toBe(
       '$150.00',
     )
+  })
+})
+
+describe('SQLite cancellation flags', () => {
+  it('does not render a numeric zero for an unset cancellation flag', async () => {
+    const data = running()
+    data.jobs[0].cancel_requested = 0 as unknown as boolean
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => Promise.resolve(response(data))),
+    )
+    const view = render(<App />)
+    await flush()
+    const banner = view.container.querySelector('.job-banner')!
+    expect(
+      [...banner.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join(''),
+    ).not.toContain('0')
+    expect((screen.getByRole('button', { name: '取消作業' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    )
+  })
+})
+
+describe('adaptive overview polling', () => {
+  it('refreshes idle visible data every 30 seconds, not every four seconds', async () => {
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(response(empty())))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      vi.advanceTimersByTime(26000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+  it('polls active jobs at four seconds then returns to the idle cadence', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response(running()))
+      .mockImplementation(() => Promise.resolve(response(empty())))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(26000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(3)
+  })
+  it('pauses hidden-tab polling and coalesces visibility/focus into an immediate refresh', async () => {
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(response(running())))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+    fireEvent(document, new Event('visibilitychange'))
+    await act(async () => {
+      vi.advanceTimersByTime(120000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+    fireEvent(document, new Event('visibilitychange'))
+    fireEvent(window, new Event('focus'))
+    await flush()
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(3)
+  })
+  it('loads once even if initially hidden and retries errors at 30 seconds', async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockImplementation(() => Promise.resolve(response(empty())))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      vi.advanceTimersByTime(60000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+    fireEvent(document, new Event('visibilitychange'))
+    await flush()
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+  it('backs off an active-job request failure instead of retrying every four seconds', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(response(running()))
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockImplementation(() => Promise.resolve(response(running())))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      vi.advanceTimersByTime(26000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(3)
   })
 })

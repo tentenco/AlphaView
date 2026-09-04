@@ -23,11 +23,14 @@ import { StockModal, Strategies } from './Research'
 import { Screener } from './Screener'
 import type { UniverseLimit } from './Screener'
 import { DataQuality } from './DataQuality'
+import { MarketOverview } from './MarketOverview'
+import { WorkspaceBackup } from './WorkspaceBackup'
 import { PriceChart } from './Charts'
 
-type Page = 'overview' | 'screener' | 'portfolio' | 'strategies' | 'data'
+type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
 const nav = [
   { id: 'overview', title: '投資總覽', icon: Dashboard },
+  { id: 'market', title: '市場概況', icon: ChartEvaluation },
   { id: 'screener', title: '每日選股', icon: Filter },
   { id: 'portfolio', title: '我的持股', icon: PortfolioIcon },
   { id: 'strategies', title: '策略研究', icon: ChartLine },
@@ -383,6 +386,7 @@ function DataPage({
           </div>
         </div>
       </div>
+      <WorkspaceBackup />
       <DataQuality busy={busy} onRetry={onRetry} onOpen={onOpen} />
       <div className="section-heading">
         <h2>
@@ -559,6 +563,8 @@ export default function App() {
   const overviewRequest = useRef(0)
   const overviewController = useRef<AbortController | null>(null)
   const overviewPending = useRef(false)
+  const lastOverviewAttempt = useRef(-Infinity)
+  const overviewFailed = useRef(false)
   const load = useCallback(async (replace = true) => {
     if (!replace && overviewPending.current) return
     overviewController.current?.abort()
@@ -566,15 +572,19 @@ export default function App() {
     overviewController.current = controller
     const current = ++overviewRequest.current
     overviewPending.current = true
+    lastOverviewAttempt.current = Date.now()
     try {
       const result = await api<Overview>('/api/overview', { signal: controller.signal })
       if (mounted.current && current === overviewRequest.current) {
+        overviewFailed.current = false
         setData(result)
         setError('')
       }
     } catch (err) {
-      if (mounted.current && current === overviewRequest.current && !controller.signal.aborted)
+      if (mounted.current && current === overviewRequest.current && !controller.signal.aborted) {
+        overviewFailed.current = true
         setError((err as Error).message)
+      }
     } finally {
       if (current === overviewRequest.current) overviewPending.current = false
     }
@@ -582,15 +592,54 @@ export default function App() {
   useEffect(() => {
     mounted.current = true
     void load()
-    const timer = setInterval(() => void load(false), 4000)
     return () => {
       mounted.current = false
       overviewController.current?.abort()
       overviewRequest.current++
       overviewPending.current = false
-      clearInterval(timer)
     }
   }, [load])
+  const hasActiveJob = data?.jobs.some((item) => item.status === 'running') ?? false
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+    const visible = () => document.visibilityState !== 'hidden'
+    function schedule() {
+      clearTimeout(timer)
+      if (disposed || !visible()) return
+      timer = setTimeout(
+        () => void refresh(),
+        !overviewFailed.current && hasActiveJob ? 4000 : 30000,
+      )
+    }
+    async function refresh() {
+      clearTimeout(timer)
+      if (disposed || !visible()) return
+      await load(false)
+      schedule()
+    }
+    function resume() {
+      if (!visible()) {
+        clearTimeout(timer)
+        return
+      }
+      // A visibility event and window focus commonly arrive together.
+      if (overviewPending.current || Date.now() - lastOverviewAttempt.current < 1000) {
+        schedule()
+        return
+      }
+      void refresh()
+    }
+    schedule()
+    document.addEventListener('visibilitychange', resume)
+    window.addEventListener('focus', resume)
+    return () => {
+      disposed = true
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', resume)
+      window.removeEventListener('focus', resume)
+    }
+  }, [hasActiveJob, load])
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(''), 5000)
@@ -665,7 +714,8 @@ export default function App() {
       setCancellingId(null)
   }, [data?.jobs, cancellingId])
   async function cancelJob() {
-    if (!job || cancelPending.current || cancellingId === job.id || job.cancel_requested) return
+    if (!job || cancelPending.current || cancellingId === job.id || Boolean(job.cancel_requested))
+      return
     const id = job.id
     cancelPending.current = true
     setCancellingId(id)
@@ -782,7 +832,7 @@ export default function App() {
       <main className="main">
         <div className="breadcrumb">
           個人工作區 <span>/</span> <strong>{nav.find((n) => n.id === page)?.title}</strong>
-          {page !== 'data' && page !== 'screener' && (
+          {page !== 'data' && page !== 'screener' && page !== 'market' && (
             <button
               type="button"
               className="text-button"
@@ -801,12 +851,12 @@ export default function App() {
             <button
               type="button"
               className="button"
-              disabled={cancellingId === job.id || job.cancel_requested}
+              disabled={cancellingId === job.id || Boolean(job.cancel_requested)}
               onClick={() => void cancelJob()}
             >
-              {cancellingId === job.id || job.cancel_requested ? '取消中…' : '取消作業'}
+              {cancellingId === job.id || Boolean(job.cancel_requested) ? '取消中…' : '取消作業'}
             </button>
-            {(cancellingId === job.id || job.cancel_requested) && (
+            {(cancellingId === job.id || Boolean(job.cancel_requested)) && (
               <small>等待目前步驟停止，先前完整選股結果會保留。</small>
             )}
             <button type="button" className="text-button" onClick={() => navigate('data')}>
@@ -844,8 +894,17 @@ export default function App() {
                 busy={busy}
               />
             )}{' '}
+            {page === 'market' && (
+              <MarketOverview
+                data={data}
+                onOpen={openStock}
+                onScreener={() => navigate('screener', { scope: 'market', strategy: 'all' })}
+                onStrategy={(strategy) => navigate('screener', { scope: 'market', strategy })}
+              />
+            )}
             {page === 'portfolio' && (
               <Portfolio
+                onImported={() => load()}
                 positions={data.positions}
                 onOpen={openStock}
                 onEdit={setEditor}

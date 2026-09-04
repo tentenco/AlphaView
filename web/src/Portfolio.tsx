@@ -3,6 +3,7 @@ import { Add, Download, Edit, Search, ArrowsVertical } from '@carbon/icons-react
 import type { Position } from './types'
 import { api, Badge, Delta, Modal, money, num } from './ui'
 import { Sparkline } from './Charts'
+import { PortfolioImport } from './PortfolioImport'
 
 export function PortfolioTable({
   positions,
@@ -188,12 +189,15 @@ export function Portfolio({
   onOpen,
   onEdit,
   onAdd,
+  onImported,
 }: {
   positions: Position[]
   onOpen: (s: string) => void
   onEdit: (p: Position) => void
   onAdd: () => void
+  onImported?: () => Promise<void>
 }) {
+  const [importing, setImporting] = useState(false)
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
   const filtered = positions.filter(
@@ -203,6 +207,9 @@ export function Portfolio({
   )
   return (
     <>
+      {importing && onImported && (
+        <PortfolioImport onClose={() => setImporting(false)} onImported={onImported} />
+      )}
       <div className="page-title">
         <div>
           <div className="eyebrow">Portfolio</div>
@@ -210,6 +217,11 @@ export function Portfolio({
           <p>持股、成本與觀察名單，集中管理。</p>
         </div>
         <div className="actions">
+          {onImported && (
+            <button type="button" className="button" onClick={() => setImporting(true)}>
+              匯入 CSV
+            </button>
+          )}
           <a className="button" href="/api/export">
             <Download size={16} />
             匯出 CSV

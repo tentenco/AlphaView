@@ -13,6 +13,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import market, research, store, quality, changes, charting, quotes, scan_context
 from .jobs import RUN_LOCK, router as jobs_router
+from .portfolio_transfer import router as portfolio_transfer_router
+from .backups import router as backups_router
 
 
 @asynccontextmanager
@@ -29,6 +31,8 @@ async def lifespan(app):
 
 app = FastAPI(title="AlphaView Research Panel", lifespan=lifespan)
 app.include_router(jobs_router)
+app.include_router(portfolio_transfer_router)
+app.include_router(backups_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 
