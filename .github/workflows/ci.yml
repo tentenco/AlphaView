@@ -1,0 +1,30 @@
+name: AlphaView checks
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.8.15'
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --locked --extra web --extra dev
+      - run: uv run --extra web --extra dev pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefix web
+      - run: npm test --prefix web
+      - run: npm run build --prefix web

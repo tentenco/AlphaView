@@ -8,8 +8,23 @@ import pytest
 from hypothesis import given, settings as h_settings
 from hypothesis import strategies as st
 
-from sequoia_x.core.config import Settings
-from sequoia_x.notify.feishu import FeishuNotifier
+from alphaview.core.config import Settings
+from alphaview.notify.feishu import FeishuNotifier
+
+
+@pytest.fixture(autouse=True)
+def mock_stock_names():
+    """Keep notification unit tests independent of the live market-data service."""
+    with patch.object(FeishuNotifier, "_get_stock_names", return_value={}):
+        yield
+
+
+def test_empty_webhook_skips_network() -> None:
+    notifier = FeishuNotifier(make_settings(webhook_url=""))
+    with patch("requests.post") as post, patch.object(notifier, "_get_stock_names") as names:
+        notifier.send(["000001"], "Test")
+    post.assert_not_called()
+    names.assert_not_called()
 
 
 def make_settings(webhook_url: str = "https://example.com/default") -> Settings:
@@ -20,7 +35,7 @@ def make_settings(webhook_url: str = "https://example.com/default") -> Settings:
     )
 
 
-# Feature: sequoia-x-v2, Property 10: 飞书通知包含所有选股结果
+# Feature: alphaview-v2, Property 10: 飞书通知包含所有选股结果
 @given(
     symbols=st.lists(
         st.text(min_size=6, max_size=6, alphabet="0123456789"),
@@ -44,7 +59,7 @@ def test_notification_contains_all_symbols(symbols: list[str]) -> None:
         assert symbol in card_text
 
 
-# Feature: sequoia-x-v2, Property 11: 飞书通知使用 ConfigManager 中的 Webhook URL
+# Feature: alphaview-v2, Property 11: 飞书通知使用 ConfigManager 中的 Webhook URL
 @given(
     webhook_url=st.from_regex(r"https://open\.feishu\.cn/open-apis/bot/v2/hook/[a-z0-9\-]{8,36}", fullmatch=True)
 )
@@ -62,13 +77,13 @@ def test_notification_uses_config_url(webhook_url: str) -> None:
     assert called_url == webhook_url
 
 
-# Feature: sequoia-x-v2, Property 12: HTTP 失败时记录 ERROR 日志
+# Feature: alphaview-v2, Property 12: HTTP 失败时记录 ERROR 日志
 @given(status_code=st.integers(min_value=400, max_value=599))
 @h_settings(max_examples=50)
 def test_http_failure_logs_error(status_code: int) -> None:
     """属性 12：非 200 响应时，send() 应记录 ERROR 级别日志，不抛出异常。"""
     import logging as _logging
-    import sequoia_x.notify.feishu as feishu_module
+    import alphaview.notify.feishu as feishu_module
 
     settings = make_settings()
     notifier = FeishuNotifier(settings)

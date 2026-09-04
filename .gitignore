@@ -36,3 +36,15 @@ build/
 
 # Hypothesis 测试缓存
 .hypothesis/
+
+# Local web panel
+node_modules/
+*.tsbuildinfo
+data/*.db-wal
+data/*.db-shm
+artifacts/
+
+# Workspace writer locks
+data/*.lock
+# Frontend test reports
+web/coverage/

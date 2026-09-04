@@ -9,8 +9,8 @@ import pandas as pd
 from hypothesis import given, settings as h_settings
 from hypothesis import strategies as st
 
-from sequoia_x.core.config import Settings
-from sequoia_x.data.engine import DataEngine
+from alphaview.core.config import Settings
+from alphaview.data.engine import DataEngine
 
 
 def make_engine_in(tmp_dir: str) -> tuple[DataEngine, Settings]:

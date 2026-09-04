@@ -1,4 +1,4 @@
-"""Sequoia-X V2 主程序入口。
+"""AlphaView V2 主程序入口。
 
 两种运行模式：
   python main.py               # 日常模式：8进程增量补数据 + 跑策略 + 飞书推送（2~3分钟）
@@ -15,22 +15,22 @@ from datetime import date
 import socket
 socket.setdefaulttimeout(10.0)
 
-from sequoia_x.core.config import get_settings
-from sequoia_x.core.logger import get_logger
-from sequoia_x.data.engine import DataEngine
-from sequoia_x.notify.feishu import FeishuNotifier
-from sequoia_x.strategy.base import BaseStrategy
-from sequoia_x.strategy.high_tight_flag import HighTightFlagStrategy
-from sequoia_x.strategy.limit_up_shakeout import LimitUpShakeoutStrategy
-from sequoia_x.strategy.ma_volume import MaVolumeStrategy
-from sequoia_x.strategy.turtle_trade import TurtleTradeStrategy
-from sequoia_x.strategy.uptrend_limit_down import UptrendLimitDownStrategy
-from sequoia_x.strategy.rps_breakout import RpsBreakoutStrategy
-from sequoia_x.strategy.private_placement import PrivatePlacementStrategy
+from alphaview.core.config import get_settings
+from alphaview.core.logger import get_logger
+from alphaview.data.engine import DataEngine
+from alphaview.notify.feishu import FeishuNotifier
+from alphaview.strategy.base import BaseStrategy
+from alphaview.strategy.high_tight_flag import HighTightFlagStrategy
+from alphaview.strategy.limit_up_shakeout import LimitUpShakeoutStrategy
+from alphaview.strategy.ma_volume import MaVolumeStrategy
+from alphaview.strategy.turtle_trade import TurtleTradeStrategy
+from alphaview.strategy.uptrend_limit_down import UptrendLimitDownStrategy
+from alphaview.strategy.rps_breakout import RpsBreakoutStrategy
+from alphaview.strategy.private_placement import PrivatePlacementStrategy
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sequoia-X V2 选股系统")
+    parser = argparse.ArgumentParser(description="AlphaView V2 选股系统")
     parser.add_argument(
         "--backfill",
         action="store_true",
@@ -44,7 +44,7 @@ def main() -> None:
 
         # 2. 初始化日志
         logger = get_logger(__name__)
-        logger.info("Sequoia-X V2 启动")
+        logger.info("AlphaView V2 启动")
 
         # 3. 初始化数据引擎
         engine = DataEngine(settings)
@@ -54,7 +54,7 @@ def main() -> None:
             logger.info("进入回填模式...")
             all_symbols = engine.get_all_symbols()
             engine.backfill(all_symbols)
-            logger.info("Sequoia-X V2 回填模式运行完成")
+            logger.info("AlphaView V2 回填模式运行完成")
             return
 
         # ── 日常模式：单次 API 补今天 + 策略 + 推送 ──
@@ -101,7 +101,7 @@ def main() -> None:
             traceback.print_exc()
         sys.exit(1)
 
-    logger.info("Sequoia-X V2 运行完成")
+    logger.info("AlphaView V2 运行完成")
 
 
 if __name__ == "__main__":
