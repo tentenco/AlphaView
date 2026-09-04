@@ -31,6 +31,8 @@ def report():
                 issues.append("無法檢查交易日：" + str(exc)[:100])
         if not dates:
             status, reason = "missing", "尚無歷史行情；請更新標的"
+            if dataset.get("error"):
+                reason += "；最近更新失敗：" + str(dataset["error"])
         elif issues:
             status, reason = "error", "；".join(issues)
         elif dataset.get("status") == "error":

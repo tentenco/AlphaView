@@ -45,6 +45,12 @@ def init_db():
             symbol TEXT PRIMARY KEY, name TEXT NOT NULL, source TEXT NOT NULL,
             discovered_at TEXT NOT NULL, market_cap REAL
         );
+        CREATE TABLE IF NOT EXISTS market_universe_metadata (
+            id INTEGER PRIMARY KEY CHECK(id=1), requested_limit INTEGER NOT NULL,
+            provider_total INTEGER, raw_count INTEGER NOT NULL,
+            accepted_count INTEGER NOT NULL, pages INTEGER NOT NULL,
+            discovered_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS bars (
             symbol TEXT NOT NULL, date TEXT NOT NULL, open REAL NOT NULL,
             high REAL NOT NULL, low REAL NOT NULL, close REAL NOT NULL,

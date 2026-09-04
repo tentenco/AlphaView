@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import market, research, store, quality, changes
+from . import market, research, store, quality, changes, charting, quotes, scan_context
 from .jobs import RUN_LOCK, router as jobs_router
 
 
@@ -72,50 +72,53 @@ def enriched_positions():
     result = []
     for pos in store.positions():
         frame = store.history(pos["symbol"])
-        last = frame.iloc[-1] if len(frame) else None
-        prev = frame.iloc[-2] if len(frame) > 1 else None
-        price = float(last.close) if last is not None else None
-        change = price - float(prev.close) if prev is not None else None
-        value = price * pos["shares"] if price is not None else None
-        cost_value = pos["shares"] * pos["cost"] if pos["cost"] is not None else None
-        pnl = value - cost_value if value is not None and cost_value is not None and pos["shares"] > 0 else None
-        result.append({**pos, "price": price, "change": change,
-            "change_pct": change / float(prev.close) * 100 if prev is not None else None,
-            "market_value": value, "cost_value": cost_value, "pnl": pnl,
-            "pnl_pct": pnl / cost_value * 100 if pnl is not None and cost_value else None,
-            "price_date": last.date if last is not None else None,
-            "sparkline": [{"date": r.date, "close": float(r.close)} for r in frame.tail(30).itertuples()],
+        result.append({**pos, **quotes.valuation(frame, pos["shares"], pos["cost"]),
             "dataset": datasets.get(pos["symbol"]), "research": signals.get(pos["symbol"])})
-    total = sum(p["market_value"] or 0 for p in result)
+    scale = max((p["market_value"] or 0 for p in result), default=0)
+    scaled_total = sum((p["market_value"] or 0) / scale for p in result) if scale else 0
     for p in result:
-        p["weight"] = (p["market_value"] or 0) / total * 100 if total else 0
+        p["weight"] = None if p["shares"] > 0 and p["market_value"] is None else (
+            ((p["market_value"] or 0) / scale) / scaled_total * 100 if scaled_total else 0)
     return result
 
 
 @app.get("/api/overview")
 def overview():
     items = enriched_positions()
-    valued = [p for p in items if p["shares"] > 0 and p["price"] is not None]
-    total = sum(p["market_value"] for p in valued)
-    pnl = sum(p["pnl"] or 0 for p in valued)
-    cost = sum(p["cost_value"] or 0 for p in valued)
-    changes = sum((p["change"] or 0) * p["shares"] for p in valued)
+    holdings = [p for p in items if p["shares"] > 0]
+    valued = [p for p in holdings if p["market_value"] is not None]
+    pnl_valued = [p for p in valued if p["pnl"] is not None and p["cost_value"] is not None]
+    total = quotes.total(p["market_value"] for p in valued) if valued or not holdings else None
+    pnl = quotes.total(p["pnl"] for p in pnl_valued) if pnl_valued or not holdings else None
+    cost = quotes.total(p["cost_value"] for p in pnl_valued)
     dates = sorted({p["price_date"] for p in valued if p["price_date"]})
+    day_components = [quotes.finite(p["change"] * p["shares"]) for p in valued
+                      if p["change"] is not None and p["change_pct"] is not None]
+    day_components = [component for component in day_components if component is not None]
+    day_partial = len(day_components) != len(holdings) or len(dates) > 1
+    daily_change = quotes.total(day_components) if not day_partial else None
+    day_partial = day_partial or daily_change is None
+    previous_total = quotes.finite(total - daily_change) if total is not None and daily_change is not None else None
     recent = store.latest_scan()
+    market_members = store.universe("market")
     with store.connect() as db:
         scans = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='portfolio' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         market_dates = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='market' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         jobs = [dict(r) for r in db.execute("SELECT * FROM jobs ORDER BY started_at DESC LIMIT 10")]
     matched = [r for r in recent["result"] if any(s["matched"] for s in r["signals"])] if recent else []
     return {"positions": items, "summary": {"market_value": total, "pnl": pnl,
-        "pnl_pct": pnl / cost * 100 if cost else None, "day_change": changes,
-        "day_change_pct": changes / (total - changes) * 100 if total - changes else None,
+        "pnl_pct": quotes.finite(pnl / cost * 100) if pnl is not None and cost else None,
+        "day_change": daily_change,
+        "day_change_pct": quotes.finite(daily_change / previous_total * 100) if daily_change is not None and previous_total else None,
+        "day_change_partial": day_partial, "day_change_covered_count": len(day_components),
         "holding_count": sum(p["shares"] > 0 for p in items), "watch_count": sum(p["shares"] == 0 for p in items),
         "priced_count": len(valued), "dates": dates, "matched_count": len(matched),
-        "partial": len(valued) < sum(p["shares"] > 0 for p in items), "mixed_dates": len(dates) > 1},
-        "scan": recent, "scan_dates": scans, "strategies": research.STRATEGIES,
-        "market_scan": store.latest_scan(scope="market"), "market_scan_dates": market_dates,
-        "market_universe": store.universe("market"),
+        "partial": len(valued) < len(holdings) or len(pnl_valued) < len(holdings) or total is None or pnl is None,
+        "mixed_dates": len(dates) > 1},
+        "scan": scan_context.decorate(recent, items), "scan_dates": scans, "strategies": research.STRATEGIES,
+        "market_scan": scan_context.decorate(store.latest_scan(scope="market"), market_members), "market_scan_dates": market_dates,
+        "market_universe": market_members,
+        "market_universe_meta": market.universe_metadata(),
         "datasets": store.dataset_rows(), "jobs": jobs, "server_time": store.now()}
 
 
@@ -124,7 +127,7 @@ def scan_result(as_of: date | None = None, scope: Literal["portfolio", "market"]
     result = store.latest_scan(str(as_of) if as_of else None, scope=scope)
     if not result:
         raise HTTPException(404, "這個日期尚無選股紀錄")
-    return result
+    return scan_context.decorate(result)
 
 
 @app.get("/api/stocks/{symbol}")
@@ -138,31 +141,16 @@ def stock(symbol: str, scope: Literal["portfolio", "market"] = "portfolio", as_o
     raw = store.history(symbol)
     if as_of:
         raw = raw[raw.date <= str(as_of)]
-    last = raw.iloc[-1] if len(raw) else None
-    prev = raw.iloc[-2] if len(raw) > 1 else None
     if not pos:
         pos = {"symbol": symbol, "name": (member or row)["name"], "shares": 0, "cost": None,
                "snapshot_price": None, "sector": "市場候選", "source": "市場選股",
                "dataset": next((r for r in store.dataset_rows() if r["symbol"] == symbol), None)}
-    price = float(last.close) if last is not None else None
-    change = price - float(prev.close) if prev is not None else None
-    value = price * pos["shares"] if price is not None else None
-    cost_value = pos["shares"] * pos["cost"] if pos["cost"] is not None else None
-    pnl = value - cost_value if value is not None and cost_value is not None and pos["shares"] > 0 else None
-    pos.update({"research": row, "price": price, "change": change,
-                "price_date": last.date if last is not None else None,
-                "change_pct": change / float(prev.close) * 100 if prev is not None and prev.close else None,
-                "market_value": value, "cost_value": cost_value, "pnl": pnl,
-                "pnl_pct": pnl / cost_value * 100 if pnl is not None and cost_value else None,
-                "sparkline": [{"date": r.date, "close": float(r.close)} for r in raw.tail(30).itertuples()],
+    pos.update({"research": row, **quotes.valuation(raw, pos["shares"], pos["cost"]),
                 "valuation_basis": "目前股數與成本 × 所選日期收盤價，並非歷史持倉" if as_of else "目前持股與最新收盤價"})
     # Current allocation cannot be represented as a historical portfolio weight.
     if as_of:
         pos["weight"] = None
-    df = research.indicators(raw)
-    price_history = [{"date": r.date, **{k: research.finite(getattr(r, k)) for k in
-                     ("close", "ma20", "ma50", "ma200", "rsi", "volume")}} for r in df.itertuples()]
-    return {"position": pos, "history": price_history, "strategies": research.STRATEGIES}
+    return {"position": pos, **charting.history(raw), "strategies": research.STRATEGIES}
 
 
 @app.post("/api/watchlist/{symbol}")

@@ -118,9 +118,25 @@ def fetch_symbol(symbol):
     return {"symbol": symbol, "rows": len(frame), "last_date": frame["date"].max()}
 
 
-def discover_universe():
+UNIVERSE_LIMITS = (250, 500, 1000)
+
+
+def universe_metadata():
+    with store.connect() as db:
+        row = db.execute("SELECT * FROM market_universe_metadata WHERE id=1").fetchone()
+        count = db.execute("SELECT COUNT(*) FROM market_universe").fetchone()[0]
+    if row:
+        return {key: value for key, value in dict(row).items() if key != "id"}
+    return {"requested_limit": next((limit for limit in UNIVERSE_LIMITS if count <= limit), 1000),
+            "provider_total": None, "raw_count": None, "accepted_count": count,
+            "pages": None, "discovered_at": None}
+
+
+def discover_universe(universe_limit=250, progress=lambda message: None, check_cancel=lambda: None):
     import re
     import yfinance as yf
+    if type(universe_limit) is not int or universe_limit not in UNIVERSE_LIMITS:
+        raise ValueError("市場股票池上限須為 250、500 或 1000")
     query = yf.EquityQuery("and", [
         yf.EquityQuery("eq", ["region", "us"]),
         yf.EquityQuery("is-in", ["exchange", "NMS", "NYQ"]),
@@ -128,29 +144,70 @@ def discover_universe():
         yf.EquityQuery("gte", ["intradayprice", 5]),
         yf.EquityQuery("gte", ["avgdailyvol3m", 200_000]),
     ])
-    response = yf.screen(query, size=250, sortField="intradaymarketcap", sortAsc=False)
-    quotes = response.get("quotes", []) if response else []
-    entries = {}
-    for q in quotes:
-        symbol = q.get("symbol", "")
-        if (q.get("quoteType") == "EQUITY" and q.get("currency") == "USD"
-                and q.get("exchange") in {"NMS", "NYQ"} and re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", symbol)):
-            entries[symbol] = (symbol, q.get("longName") or q.get("shortName") or symbol,
-                               "Yahoo Equity Screener · 市值排序前 250 檔", store.now(), q.get("marketCap"))
+    entries, seen_pages = {}, set()
+    offset, pages, provider_total = 0, 0, None
+    timestamp = store.now()
+    target = universe_limit
+    while offset < target:
+        check_cancel()
+        size = min(250, target - offset)
+        progress(f"建立市場股票池：第 {pages + 1}/{(target + 249) // 250} 頁 · 目標最多 {universe_limit} 檔")
+        response = yf.screen(query, size=size, offset=offset, sortField="intradaymarketcap", sortAsc=False)
+        check_cancel()
+        if not isinstance(response, dict):
+            raise ValueError("市場股票池分頁回應異常，保留原股票池")
+        total, start, quotes = response.get("total"), response.get("start"), response.get("quotes")
+        if type(total) is not int or total < 0 or type(start) is not int or start != offset or not isinstance(quotes, list):
+            raise ValueError("市場股票池分頁資訊不完整或位移錯誤，保留原股票池")
+        if provider_total is not None and total != provider_total:
+            raise ValueError("市場股票池總數在分頁期間改變，請重試；保留原股票池")
+        provider_total = total
+        target = min(universe_limit, total)
+        expected = min(size, max(0, total - offset))
+        if len(quotes) != expected:
+            raise ValueError("市場股票池分頁筆數不足或超出預期，保留原股票池")
+        signature = tuple(q.get("symbol") if isinstance(q, dict) else None for q in quotes)
+        if signature in seen_pages:
+            raise ValueError("資料源重複回傳相同股票池頁面，保留原股票池")
+        seen_pages.add(signature)
+        for quote in quotes:
+            if not isinstance(quote, dict):
+                continue
+            symbol = quote.get("symbol", "")
+            if (isinstance(symbol, str) and quote.get("quoteType") == "EQUITY" and quote.get("currency") == "USD"
+                    and quote.get("exchange") in {"NMS", "NYQ"} and re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", symbol)):
+                entries.setdefault(symbol, (symbol, quote.get("longName") or quote.get("shortName") or symbol,
+                                            f"Yahoo Equity Screener · 市值排序擷取最多 {universe_limit} 檔",
+                                            timestamp, quote.get("marketCap")))
+        pages += 1
+        offset += len(quotes)
+        if not quotes:
+            break
     if len(entries) < 20:
         raise ValueError("市場股票池回傳不足 20 檔，保留原清單；請稍後重試")
+    check_cancel()
     with store.connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        check_cancel()
         db.execute("DELETE FROM market_universe")
         db.executemany("INSERT INTO market_universe VALUES (?,?,?,?,?)", list(entries.values()))
+        db.execute("""INSERT INTO market_universe_metadata
+            (id,requested_limit,provider_total,raw_count,accepted_count,pages,discovered_at)
+            VALUES (1,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+            requested_limit=excluded.requested_limit,provider_total=excluded.provider_total,
+            raw_count=excluded.raw_count,accepted_count=excluded.accepted_count,
+            pages=excluded.pages,discovered_at=excluded.discovered_at""",
+            (universe_limit, provider_total, offset, len(entries), pages, timestamp))
+    progress(f"股票池已建立：目標最多 {universe_limit} 檔，取得 {len(entries)} 檔有效標的（資料源符合條件共 {provider_total} 檔）")
     return len(entries)
 
 
-def refresh(progress=lambda message: None, scope="portfolio", symbols=None, check_cancel=lambda: None):
+def refresh(progress=lambda message: None, scope="portfolio", symbols=None, check_cancel=lambda: None, universe_limit=250):
     from concurrent.futures import ThreadPoolExecutor, as_completed
     check_cancel()
     if scope == "market" and symbols is None:
-        progress("正在從美股市場建立候選股票池（最多 250 檔）")
-        discover_universe()
+        progress(f"正在從美股市場建立候選股票池（最多 {universe_limit} 檔）")
+        discover_universe(universe_limit, progress=progress, check_cancel=check_cancel)
     members = store.universe(scope) if symbols is None else [{"symbol": symbol} for symbol in dict.fromkeys(symbols)]
     results = []
 

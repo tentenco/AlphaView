@@ -18,13 +18,14 @@ class JobInput(BaseModel):
     scope: Literal["portfolio", "market"] = "portfolio"
     kind: Literal["refresh", "scan", "retry"]
     symbols: list[str] = Field(default_factory=list, max_length=100)
+    universe_limit: Literal[250, 500, 1000] = 250
 
 
 class JobCancelled(Exception):
     pass
 
 
-def worker(job_id, kind, scope="portfolio", symbols=None):
+def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
     result = {}
 
     def check_cancel():
@@ -41,7 +42,7 @@ def worker(job_id, kind, scope="portfolio", symbols=None):
     try:
         check_cancel()
         if kind in {"refresh", "retry"}:
-            result["market"] = market.refresh(progress, scope=scope, symbols=symbols if kind == "retry" else None, check_cancel=check_cancel)
+            result["market"] = market.refresh(progress, scope=scope, symbols=symbols if kind == "retry" else None, check_cancel=check_cancel, universe_limit=universe_limit)
         check_cancel()
         scopes = [scope]
         if kind == "retry":
@@ -104,6 +105,8 @@ def start_job(body: JobInput):
     job_id = str(uuid.uuid4())
     inserted = False
     try:
+        if body.universe_limit != 250 and (body.kind != "refresh" or body.scope != "market"):
+            raise HTTPException(422, "只有市場更新作業可設定股票池上限")
         if body.kind == "retry":
             members = {p["symbol"] for p in [*store.positions(), *store.universe("market")]}
             if not body.symbols or any(s not in members for s in body.symbols):
@@ -114,7 +117,7 @@ def start_job(body: JobInput):
             db.execute("INSERT INTO jobs(id,kind,status,started_at,progress,scope,cancel_requested) VALUES (?,?,'running',?,'準備開始',?,0)",
                        (job_id, body.kind, store.now(), body.scope))
         inserted = True
-        threading.Thread(target=worker, args=(job_id, body.kind, body.scope, list(dict.fromkeys(body.symbols))), daemon=True).start()
+        threading.Thread(target=worker, args=(job_id, body.kind, body.scope, list(dict.fromkeys(body.symbols)), body.universe_limit), daemon=True).start()
     except Exception as exc:
         try:
             if inserted:

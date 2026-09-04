@@ -3,10 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { Badge } from './ui'
 
-const signal = { strategy: 'trend', status: 'insufficient' as const, matched: false, reason: 'Only 59 of the required 200 daily bars are available.' }
+const signal = {
+  strategy: 'trend',
+  status: 'insufficient' as const,
+  matched: false,
+  reason: 'Only 59 of the required 200 daily bars are available.',
+}
 describe('strategy reasons', () => {
   it('reveals the reason when tapped or clicked and can collapse it again', async () => {
-    render(<Badge signal={signal}/>)
+    render(<Badge signal={signal} />)
     const trigger = screen.getByLabelText('資料不足，查看策略原因')
     const disclosure = trigger.closest('details')!
     expect(disclosure.open).toBe(false)
@@ -17,7 +22,7 @@ describe('strategy reasons', () => {
     expect(disclosure.open).toBe(false)
   })
   it('includes the native disclosure trigger in keyboard tab order', async () => {
-    render(<Badge signal={signal}/>)
+    render(<Badge signal={signal} />)
     const trigger = screen.getByLabelText('資料不足，查看策略原因')
     await userEvent.tab()
     expect(document.activeElement).toBe(trigger)

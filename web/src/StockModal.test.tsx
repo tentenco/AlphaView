@@ -6,17 +6,41 @@ import { overview, position, response } from './test/fixtures'
 
 vi.mock('./Charts', () => ({ PriceChart: () => null, EquityChart: () => null }))
 beforeEach(() => {
-  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function(this: HTMLDialogElement) { this.setAttribute('open', '') } })
-  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function(this: HTMLDialogElement) { this.removeAttribute('open') } })
-  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(response(url.startsWith('/api/notes/')
-    ? { symbol: 'NVDA', note: '', tags: [], updated_at: null, version: 0 }
-    : { position: position(), history: [], strategies: overview().strategies }))))
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.setAttribute('open', '')
+    },
+  })
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.removeAttribute('open')
+    },
+  })
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          response(
+            url.startsWith('/api/notes/')
+              ? { symbol: 'NVDA', note: '', tags: [], updated_at: null, version: 0 }
+              : { position: position(), history: [], strategies: overview().strategies },
+          ),
+        ),
+      ),
+  )
 })
 describe('stock dialog unsaved research', () => {
   it('keeps the modal open until unsaved notes are explicitly discarded', async () => {
     const close = vi.fn()
-    render(<StockModal symbol="NVDA" onClose={close}/>)
-    await userEvent.type(await screen.findByRole('textbox', { name: '研究內容' }), 'Unsaved research')
+    render(<StockModal symbol="NVDA" onClose={close} />)
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: '研究內容' }),
+      'Unsaved research',
+    )
     await userEvent.click(screen.getByRole('button', { name: '關閉視窗' }))
     expect(close).not.toHaveBeenCalled()
     expect(screen.getByText('研究筆記尚未儲存，是否捨棄變更並關閉？')).toBeTruthy()
@@ -28,15 +52,65 @@ describe('stock dialog unsaved research', () => {
   })
   it('intercepts native Escape cancellation for dirty notes but closes clean notes directly', async () => {
     const close = vi.fn()
-    render(<StockModal symbol="NVDA" onClose={close}/>)
+    render(<StockModal symbol="NVDA" onClose={close} />)
     await userEvent.type(await screen.findByRole('textbox', { name: '研究內容' }), 'Draft')
     const event = new Event('cancel', { cancelable: true, bubbles: false })
-    act(() => { screen.getByRole('dialog').dispatchEvent(event) })
+    act(() => {
+      screen.getByRole('dialog').dispatchEvent(event)
+    })
     expect(event.defaultPrevented).toBe(true)
     expect(close).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: '繼續編輯筆記' }))
     await userEvent.click(screen.getByRole('button', { name: '取消變更' }))
     fireEvent.click(screen.getByRole('button', { name: '關閉視窗' }))
     expect(close).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('stock chart data integrity', () => {
+  it('keeps missing chart points explicit and suppresses saved indicators for invalid data', async () => {
+    const current = position('NVDA', [
+      { strategy: 'trend', status: 'match', matched: true, reason: 'Old successful signal' },
+    ])
+    current.research!.indicators = { rsi: 64.9, volume_ratio: 2.5 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve(
+          response(
+            url.startsWith('/api/notes/')
+              ? { symbol: 'NVDA', note: '', tags: [], version: 0, updated_at: null }
+              : {
+                  position: current,
+                  history: [
+                    {
+                      date: '2026-09-03',
+                      close: null,
+                      ma50: null,
+                      ma200: null,
+                      rsi: null,
+                      volume: null,
+                    },
+                  ],
+                  strategies: overview().strategies,
+                  quality: {
+                    status: 'invalid',
+                    valid: false,
+                    invalid_count: 1,
+                    issues: [{ date: '2026-09-03', reason: 'Invalid adjusted price' }],
+                  },
+                },
+          ),
+        ),
+      ),
+    )
+    render(<StockModal symbol="NVDA" onClose={vi.fn()} />)
+    expect(await screen.findByText('日線資料異常：1 筆')).toBeTruthy()
+    await userEvent.click(screen.getByText('查看異常日期與原因'))
+    expect(screen.getByText('2026-09-03：Invalid adjusted price')).toBeTruthy()
+    expect(screen.getByText('RSI 14').textContent).toBe('RSI 14—')
+    expect(screen.getByText('成交量比').textContent).toBe('成交量比—')
+    expect(screen.queryByText('Old successful signal')).toBeNull()
+    expect(screen.queryByText('符合條件')).toBeNull()
   })
 })

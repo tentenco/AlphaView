@@ -1,15 +1,176 @@
 import { useId } from 'react'
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { num } from './ui'
-export function Sparkline({ data, positive }: { data: { date: string; close: number }[]; positive: boolean }) {
-  if (data.length < 2) return <span className="muted">尚無日線</span>
-  return <div className="sparkline" aria-label="近 30 日收盤趨勢"><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><Line type="linear" dataKey="close" stroke={positive ? 'var(--positive)' : 'var(--negative)'} strokeWidth={1.5} dot={false} isAnimationActive={false} /><YAxis domain={['dataMin', 'dataMax']} hide /></LineChart></ResponsiveContainer></div>
+export function Sparkline({
+  data,
+  positive,
+}: {
+  data: { date: string; close: number | null }[]
+  positive: boolean
+}) {
+  if (data.filter((point) => point.close != null).length < 2)
+    return <span className="muted">尚無日線</span>
+  return (
+    <div className="sparkline" aria-label="近 30 日收盤趨勢">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <Line
+            type="linear"
+            dataKey="close"
+            connectNulls={false}
+            stroke={positive ? 'var(--positive)' : 'var(--negative)'}
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+          <YAxis domain={['dataMin', 'dataMax']} hide />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
-export function PriceChart({ data, average = true }: { data: { date: string; close: number; ma50?: number | null; ma200?: number | null }[]; average?: boolean }) {
+export function PriceChart({
+  data,
+  average = true,
+}: {
+  data: { date: string; close: number | null; ma50?: number | null; ma200?: number | null }[]
+  average?: boolean
+}) {
   const fillId = useId().replace(/:/g, '')
   if (!data.length) return <div className="chart-empty">更新行情後，即可查看歷史走勢</div>
-  return <div className="price-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}><defs><linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--positive)" stopOpacity={.16}/><stop offset="100%" stopColor="var(--positive)" stopOpacity={0}/></linearGradient></defs><CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 4" /><XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={48} /><YAxis orientation="right" domain={['auto', 'auto']} tickFormatter={v => num(v, 0)} tick={{ fill: 'var(--muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={55} /><Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 5 }} formatter={(v) => num(Number(v))} /><Area type="linear" dataKey="close" name="調整收盤價" stroke="var(--positive)" fill={`url(#${fillId})`} strokeWidth={2} isAnimationActive={false} />{average && <><Area type="linear" dataKey="ma50" name="MA50" stroke="var(--blue)" fill="none" strokeWidth={1} isAnimationActive={false} /><Area type="linear" dataKey="ma200" name="MA200" stroke="var(--amber)" fill="none" strokeWidth={1} isAnimationActive={false} /></>}</AreaChart></ResponsiveContainer></div>
+  return (
+    <div className="price-chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--positive)" stopOpacity={0.16} />
+              <stop offset="100%" stopColor="var(--positive)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 4" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d) => d.slice(5)}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            minTickGap={48}
+          />
+          <YAxis
+            orientation="right"
+            domain={['auto', 'auto']}
+            tickFormatter={(v) => num(v, 0)}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={55}
+          />
+          <Tooltip
+            contentStyle={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 5,
+            }}
+            formatter={(v) => (v == null ? '—' : num(Number(v)))}
+          />
+          <Area
+            type="linear"
+            dataKey="close"
+            connectNulls={false}
+            name="調整收盤價"
+            stroke="var(--positive)"
+            fill={`url(#${fillId})`}
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+          {average && (
+            <>
+              <Area
+                type="linear"
+                dataKey="ma50"
+                connectNulls={false}
+                name="MA50"
+                stroke="var(--blue)"
+                fill="none"
+                strokeWidth={1}
+                isAnimationActive={false}
+              />
+              <Area
+                type="linear"
+                dataKey="ma200"
+                connectNulls={false}
+                name="MA200"
+                stroke="var(--amber)"
+                fill="none"
+                strokeWidth={1}
+                isAnimationActive={false}
+              />
+            </>
+          )}
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
-export function EquityChart({ data }: { data: { date: string; value: number; benchmark: number }[] }) {
-  return <div className="price-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 4"/><XAxis dataKey="date" tickFormatter={d => d.slice(0, 7)} axisLine={false} tickLine={false} minTickGap={65} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><YAxis orientation="right" domain={['auto', 'auto']} tickFormatter={v => `${num(v / 1000, 0)}k`} axisLine={false} tickLine={false} tick={{ fill: 'var(--muted)', fontSize: 11 }} /><Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)' }} formatter={v => num(Number(v))} /><Line dataKey="value" name="策略淨值" stroke="var(--positive)" dot={false} strokeWidth={2} isAnimationActive={false}/><Line dataKey="benchmark" name="買入持有" stroke="var(--muted)" strokeDasharray="4 4" dot={false} isAnimationActive={false}/></LineChart></ResponsiveContainer></div>
+export function EquityChart({
+  data,
+}: {
+  data: { date: string; value: number; benchmark: number }[]
+}) {
+  return (
+    <div className="price-chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 4" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d) => d.slice(0, 7)}
+            axisLine={false}
+            tickLine={false}
+            minTickGap={65}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <YAxis
+            orientation="right"
+            domain={['auto', 'auto']}
+            tickFormatter={(v) => `${num(v / 1000, 0)}k`}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+          />
+          <Tooltip
+            contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+            formatter={(v) => (v == null ? '—' : num(Number(v)))}
+          />
+          <Line
+            dataKey="value"
+            name="策略淨值"
+            stroke="var(--positive)"
+            dot={false}
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+          <Line
+            dataKey="benchmark"
+            name="買入持有"
+            stroke="var(--muted)"
+            strokeDasharray="4 4"
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
