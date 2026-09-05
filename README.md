@@ -174,3 +174,5 @@ Cleanup requires a current preview and explicit confirmation. It removes only su
 The portfolio editor sends `expected_updated_at` with each save and rejects conflicting edits with HTTP 409; reopen the editor to review the latest record before saving. New entries send a null expectation and also detect a concurrent addition. Legacy API clients that omit this field retain last-write-compatible behavior and do not receive this conflict protection.
 
 Data recovery options and their validation requirements are documented in the [data-provider evaluation](docs/data-provider-evaluation.md).
+
+Next-Harness proposals are separate from shipped features: [data recovery and benchmark](docs/next-harness-data.md), [workspace restore and research continuity](docs/next-harness-workspace.md), and [ledger and methodology acceptance cases](docs/next-harness-methodology.md).

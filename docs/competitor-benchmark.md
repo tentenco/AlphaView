@@ -27,7 +27,7 @@ AlphaView 最值得建立的差異是：繁體中文、可解釋的每日策略�
 
 ## AlphaView 基線與差距
 
-基線依本地 `panel/market.py`、`panel/research.py`、`panel/api.py`、`web/src/Research.tsx`、`web/src/App.tsx` 與型別定義直接檢查。
+基線依本地 `alphaview/panel/market.py`、`alphaview/panel/research.py`、`alphaview/panel/api.py`、`web/src/Research.tsx`、`web/src/App.tsx` 與型別定義直接檢查。
 
 | 工作流程 | 基線已有 | 主要缺口 | 優先級 |
 | --- | --- | --- | --- |
