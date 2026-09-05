@@ -49,3 +49,5 @@ Review `review.html` and approve the next priorities based on value and data rea
 `scripts/polling_revision_soak.py` 的 CLI 會先複製 Python 應用程式與測試 runner 到暫存目錄，父程序與後續 spawn 子程序均載入同一份副本。來源清單與 SHA-256 留在輸出資料夾，並記錄當時 Git commit 與是否有未提交修改。長測只使用合成 SQLite 資料並停用網路；暫存副本隨程序結束清除。
 
 這避免開發中修改 API 回應格式，造成長測父子程序比較不同版本的回應。既有失敗紀錄必須保留；新的通過紀錄不能抹除先前的逾時或其他失敗。未保存比較 payload 的歷史失敗，不得僅憑事後重現就宣稱原因已完全確定。
+
+Pipe 回傳必須先排空再等待 reader 子程序結束，否則資料超過作業系統緩衝大小時，子程序等待送出、父程序等待結束而互相卡住。本輪以真實子程序重現首次與固定來源長測的精確失敗輪次，並加入 64 KiB 狀態回傳回歸測試；緩衝大小是平台特性，不能假定所有系統都是本機測得的 512 bytes。每個子程序仍有期限與 finally kill／reap，避免測試本身無限等待。

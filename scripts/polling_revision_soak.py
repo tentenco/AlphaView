@@ -9,6 +9,8 @@ import socket
 import sys
 import tempfile
 import time
+import threading
+import queue
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,7 +33,9 @@ def child(db_path, action, sender=None, stage=None):
         stage.value = 3
         from alphaview.panel.api import polling_status
         stage.value = 4
-        sender.send(polling_status())
+        result = polling_status()
+        stage.value = 9
+        sender.send(result)
         stage.value = 5
         sender.close()
         return
@@ -47,24 +51,54 @@ def child(db_path, action, sender=None, stage=None):
             os._exit(23)  # Deliberately bypass connection cleanup before COMMIT.
 
 
-def run_child(db_path, action):
+def run_child(db_path, action, *, timeout=10, _target=child):
     context = multiprocessing.get_context('spawn')
     receiver, sender = context.Pipe(duplex=False)
     stage = context.Value("i", 0, lock=False)
-    process = context.Process(target=child, args=(db_path, action, sender, stage))
+    process = context.Process(target=_target, args=(db_path, action, sender, stage))
     process.start()
-    process.join(10)
-    if process.is_alive():
-        process.kill()
-        process.join()
-        sender.close()
-        receiver.close()
-        raise AssertionError(f'child transaction timed out: action={action}, stage={stage.value}')
-    assert process.exitcode == (23 if action == 'crash' else 0), 'unexpected child exit'
     sender.close()
-    result = receiver.recv() if action == 'read' else None
-    receiver.close()
-    return result
+    deadline = time.monotonic() + timeout
+    received = queue.Queue(maxsize=1)
+    reader = None
+    def receive_complete_frame():
+        try:
+            received.put((True, receiver.recv()))
+        except BaseException as exc:
+            received.put((False, exc))
+    try:
+        # Drain while the child sends, but bound the entire frame reception,
+        # not only readiness of its first bytes. Kill closes the child writer
+        # and releases any blocked read before cleanup joins the reader.
+        if action == 'read':
+            reader = threading.Thread(target=receive_complete_frame,
+                                      name='polling-soak-pipe-reader', daemon=True)
+            reader.start()
+            try:
+                success, result = received.get(timeout=max(0, deadline - time.monotonic()))
+            except queue.Empty:
+                raise AssertionError(f'child transaction timed out: action={action}, stage={stage.value}') from None
+            if not success:
+                raise result
+        else:
+            result = None
+        process.join(max(0, deadline - time.monotonic()))
+        if process.is_alive():
+            raise AssertionError(f'child transaction timed out: action={action}, stage={stage.value}')
+        assert process.exitcode == (23 if action == 'crash' else 0), 'unexpected child exit'
+        return result
+    finally:
+        if process.is_alive():
+            process.kill()
+        process.join(2)
+        if process.is_alive():
+            raise RuntimeError('Unable to reap polling soak child after kill')
+        if reader is not None:
+            reader.join(2)
+        receiver.close()
+        process.close()
+        if reader is not None and reader.is_alive():
+            raise RuntimeError('Unable to stop polling soak pipe reader after child exit')
 
 
 def cycle(db_path):

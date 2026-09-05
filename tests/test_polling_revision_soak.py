@@ -37,3 +37,55 @@ def test_stop_marker_prevents_transactions_and_never_opens_inherited_database(tm
     assert summary['cycles'] == 0
     assert summary['stop_reason'] == 'harness_stop_or_deadline'
     assert inherited.read_bytes() == b'untouched sentinel'
+
+
+def test_large_status_response_does_not_deadlock_child_pipe(tmp_path, monkeypatch):
+    from scripts.polling_revision_soak import run_child
+    path = tmp_path / 'large-status.db'
+    monkeypatch.setenv('PANEL_DB_PATH', str(path))
+    store.init_db()
+    with store.connect() as db:
+        db.execute("INSERT INTO jobs(id,kind,status,started_at,progress) VALUES('synthetic-job','scan','running','fixed',?)", ('x' * 65536,))
+    result = run_child(str(path), 'read')
+    assert len(result['jobs'][0]['progress']) == 65536
+
+
+def partial_frame_child(db_path, action, sender, stage):
+    import struct
+    import time
+    # A real Connection frame header followed by only part of its promised body.
+    os.write(sender.fileno(), struct.pack('!i', 65536) + b'partial')
+    stage.value = 91
+    time.sleep(60)
+
+
+def broken_frame_child(db_path, action, sender, stage):
+    sender.send_bytes(b'not a pickle')
+    sender.close()
+
+
+def test_partial_frame_deadline_reaps_child_and_reader():
+    import multiprocessing
+    import threading
+    import time
+    import pytest
+    from scripts.polling_revision_soak import run_child
+    children_before = {p.pid for p in multiprocessing.active_children()}
+    threads_before = {t.ident for t in threading.enumerate()}
+    started = time.monotonic()
+    with pytest.raises(AssertionError, match='timed out: action=read, stage=91'):
+        run_child('', 'read', timeout=2, _target=partial_frame_child)
+    assert time.monotonic() - started < 5
+    assert {p.pid for p in multiprocessing.active_children()} == children_before
+    assert {t.ident for t in threading.enumerate()} == threads_before
+
+
+def test_receiver_exception_is_preserved_and_reader_cleaned_up():
+    import pickle
+    import threading
+    import pytest
+    from scripts.polling_revision_soak import run_child
+    threads_before = {t.ident for t in threading.enumerate()}
+    with pytest.raises(pickle.UnpicklingError):
+        run_child('', 'read', _target=broken_frame_child)
+    assert {t.ident for t in threading.enumerate()} == threads_before

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { Overview, Scope } from './types'
 import { api, money, num } from './ui'
 import './comparison.css'
+import { ChartErrorBoundary } from './ChartErrorBoundary'
 import { comparisonDailyCsv, comparisonSummaryCsv } from './comparison-export'
 const ComparisonChart = lazy(() => import('./ComparisonChart'))
 export type ComparisonResult = {
@@ -324,9 +325,11 @@ export function Comparison({
               可用標的不足兩檔，暫不繪製比較圖。請查看下方缺少資料的原因，或選擇其他期間／標的。
             </p>
           ) : (
-            <Suspense fallback={<p role="status">正在載入比較圖…</p>}>
-              <ComparisonChart result={result} />
-            </Suspense>
+            <ChartErrorBoundary>
+              <Suspense fallback={<p role="status">正在載入比較圖…</p>}>
+                <ComparisonChart result={result} />
+              </Suspense>
+            </ChartErrorBoundary>
           )}
           <div
             className="table-scroll"

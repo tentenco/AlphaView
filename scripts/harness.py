@@ -100,7 +100,7 @@ summary{cursor:pointer;line-height:1.7;color:#b9c5bf}section{scroll-margin-top:2
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
-    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）"), (directory / "polling-revision-frozen", "隔離版本同步長時間檢查（固定程式版本）")):
+    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）"), (directory / "polling-revision-frozen", "隔離版本同步長時間檢查（固定程式版本）"), (directory / "polling-revision-frozen-ipc-fixed", "隔離版本同步長時間檢查（固定版本與 IPC 修正）")):
         revisions, incomplete_revisions = receipt_lines(folder / "polling-revision-soak.jsonl")
         if not revisions:
             continue
@@ -122,6 +122,13 @@ summary{cursor:pointer;line-height:1.7;color:#b9c5bf}section{scroll-margin-top:2
         if incomplete_revisions:
             document += f'<p>{incomplete_revisions} 筆未完整寫入的紀錄暫不計入。</p>'
         document += '</section>'
+    pipe_probe_path = directory / "polling-pipe-backpressure-reproduction.json"
+    if pipe_probe_path.exists():
+        probe = json.loads(pipe_probe_path.read_text())
+        rows = probe.get("results", [])
+        fixed = [row for row in rows if row.get("drain_before_join")]
+        document += '<section><h2>長測逾時原因與修正</h2><p>獨立子程序實驗重現了測試 runner 的等待順序問題：先等待子程序結束、但尚未接收 Pipe 中的結果，會在訊息超過本機緩衝時互相等待。這不是已觀測到的 SQLite 未提交資料外洩。</p>'
+        document += f'<p>本機實驗對上首次第 210 輪（cycle 209）與固定版本第 170 輪（cycle 169） 的逾時邊界；修正為先接收再等待後，{sum(not row.get("blocked") for row in fixed)} / {len(fixed)} 組對照均完成。此機實測 512 與 513 bytes 的差異不能泛化到其他平台。原失敗保留，新長測另列。</p></section>'
     provenance, incomplete_provenance = receipt_lines(directory / "provenance-soak-60m.jsonl")
     if provenance:
         passed = sum(row.get("status") == "passed" for row in provenance)
