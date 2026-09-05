@@ -56,6 +56,31 @@ def schema_manifest(data, database):
     data["manifest.json"] = json.dumps(manifest).encode()
 
 
+def assert_aggregate_only_report(result, archive):
+    # Privacy is a structural contract. A cost such as 123 may legitimately also
+    # occur in a timestamp, byte count or digest, so substring exclusion cannot
+    # distinguish a row leak from public aggregate metadata.
+    assert set(result) == {
+        "valid", "integrity", "compatibility", "authenticity", "restored",
+        "snapshot_at", "app_version", "engine_version", "schema_sha256",
+        "archive_bytes", "expanded_bytes", "table_counts", "browser_preset_count",
+        "running_job_count", "schedule_enabled_in_snapshot", "warnings",
+    }
+    with zipfile.ZipFile(archive) as package:
+        manifest = json.loads(package.read("manifest.json"))
+        assert result["expanded_bytes"] == sum(info.file_size for info in package.infolist())
+    for key in ("snapshot_at", "app_version", "engine_version", "schema_sha256", "table_counts"):
+        assert result[key] == manifest[key]
+    assert result["archive_bytes"] == archive.stat().st_size
+    assert all(type(count) is int and count >= 0 for count in result["table_counts"].values())
+    assert result["browser_preset_count"] == result["running_job_count"] == 0
+    assert result["schedule_enabled_in_snapshot"] is False
+    assert isinstance(result["warnings"], list)
+    assert all(isinstance(warning, str) for warning in result["warnings"])
+    assert all(private not in json.dumps(result)
+               for private in ("Private name", "Private note", "TEST"))
+
+
 def test_current_export_passes_without_private_content_or_source_mutation(archive, tmp_path):
     source = store.db_path().read_bytes()
     before = archive.read_bytes()
@@ -63,10 +88,41 @@ def test_current_export_passes_without_private_content_or_source_mutation(archiv
     assert result["valid"] and result["compatibility"] == "current"
     assert result["table_counts"]["positions"] == result["table_counts"]["research_notes"] == 1
     assert result["authenticity"] == "not_authenticated" and not result["restored"]
-    report = json.dumps(result)
-    assert all(private not in report for private in ("Private name", "Private note", "TEST", "123"))
+    assert_aggregate_only_report(result, archive)
     assert store.db_path().read_bytes() == source and archive.read_bytes() == before
     assert not list(tmp_path.glob("alphaview-preflight-*"))
+
+
+def test_private_cost_digits_in_public_timestamp_are_not_a_privacy_leak(archive, tmp_path):
+    data = contents(archive)
+    timestamp = "2026-09-05T03:00:00.123456+00:00"
+    for filename, field in (("manifest.json", "snapshot_at"),
+                            ("research-notes.json", "snapshot_at"),
+                            ("browser-settings.json", "received_at")):
+        document = json.loads(data[filename])
+        document[field] = timestamp
+        data[filename] = json.dumps(document).encode()
+    altered = repack(tmp_path, data, rehash=True)
+    result = preflight.check_backup(altered, temp_root=tmp_path)
+    assert result["snapshot_at"] == timestamp
+    # Deterministically reproduce the old assertion's false positive without
+    # claiming which public value happened to contain these digits in CI.
+    assert not all(private not in json.dumps(result)
+                   for private in ("Private name", "Private note", "TEST", "123"))
+    assert_aggregate_only_report(result, altered)
+
+
+@pytest.mark.parametrize("leak", ["row", "note", "cost_as_count"])
+def test_aggregate_privacy_check_rejects_private_payload_leaks(archive, tmp_path, leak):
+    result = preflight.check_backup(archive, temp_root=tmp_path)
+    if leak == "row":
+        result["positions"] = [{"symbol": "TEST", "cost": 123}]
+    elif leak == "note":
+        result["warnings"] = ["Private note"]
+    else:
+        result["table_counts"] = {**result["table_counts"], "positions": 123}
+    with pytest.raises(AssertionError):
+        assert_aggregate_only_report(result, archive)
 
 
 def test_known_legacy_schema_requires_migration_without_executing_it(archive, tmp_path):
