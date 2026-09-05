@@ -93,8 +93,10 @@ def enriched_positions(expected_session=None):
             "dataset": datasets.get(pos["symbol"]), "research": signals.get(pos["symbol"])})
     scale = max((p["market_value"] or 0 for p in result), default=0)
     scaled_total = sum((p["market_value"] or 0) / scale for p in result) if scale else 0
+    allocation_complete = all(p["market_value"] is not None and p["price_date"] == expected_session
+                              for p in result if p["shares"] > 0)
     for p in result:
-        p["weight"] = None if p["shares"] > 0 and p["market_value"] is None else (
+        p["weight"] = None if p["shares"] > 0 and not allocation_complete else (
             ((p["market_value"] or 0) / scale) / scaled_total * 100 if scaled_total else 0)
     return result
 

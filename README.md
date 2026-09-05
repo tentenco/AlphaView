@@ -63,6 +63,8 @@ uv run --extra web python -m alphaview.panel refresh --scope market --universe-l
 
 The CLI defaults to 250 candidates when `--universe-limit` is omitted. The option applies only to `refresh --scope market`. A targeted retry downloads only the selected symbols and retains the current pool and its configured limit.
 
+In **資料管理 → 續跑行情更新**, choose the existing market or personal pool. Resume retains its membership and skips only successfully sourced, current, structurally valid histories with consistent metadata. Missing, stale, failed, or inconsistent histories get one download attempt each; the selected pool is then rescanned even if every history was reusable. It does not rediscover market members or change the pool limit. Full refresh and selected-symbol retry remain separate actions.
+
 ## Import your portfolio
 
 In **我的持股**, open **匯入 CSV**, paste or select a CSV, review additions and changes, then confirm. The import stays local and never downloads prices or deletes positions omitted from the file. At most 100 rows may be imported, and the resulting personal list must remain within 100 symbols.
@@ -104,6 +106,8 @@ tests/             Deterministic tests with isolated databases
 docs/              Product research and development documentation
 ```
 
+Background polling checks a lightweight workspace revision and public job state. Full overview data is fetched only after a data revision changes, on initial load, or on an explicit refresh. Transactional SQLite counters detect same-timestamp edits; active jobs poll every four seconds, visible idle pages every thirty seconds, and hidden pages pause until focus.
+
 The repository also retains an independent optional A-share CLI in `main.py` and supporting Python modules. It is not invoked by the US-stock web panel. See [local setup](LOCAL_SETUP.md) for the separate command and configuration.
 
 ## Development
@@ -129,7 +133,7 @@ API documentation is available locally at **http://127.0.0.1:8876/docs**.
 - Daily market data: Yahoo Finance through [yfinance](https://ranaroussi.github.io/yfinance/).
 - Market universe: US region, Nasdaq/NYSE, USD equities; market cap ≥ $2B, price ≥ $5, three-month average daily volume ≥ 200,000; a selectable maximum of 250, 500, or 1,000 in market-cap order. Multiple share classes and ADRs may appear. This remains a filtered subset, not all US stocks.
 - Discovery uses sequential pages of at most 250 results through [yfinance’s documented `offset` and `size` parameters](https://ranaroussi.github.io/yfinance/reference/api/yfinance.screen.html). A complete discovery replaces the pool and its metadata together; a page failure or cancellation before publication preserves the prior pool. Provider totals, identity filtering, and deduplication can produce fewer accepted symbols than requested. Accepted members must also report a finite numeric market cap of at least $2B; missing or malformed market caps are excluded. Multi-page responses are not an atomic market snapshot.
-- Quote coverage: invalid latest closes are not replaced by older prices; missing adjacent sessions make daily changes unavailable. Portfolio value and unrealized P&L may be partial subtotals with explicit coverage warnings. Historical stock views apply current quantities and costs to the selected date’s price, not a historical holdings ledger.
+- Quote coverage: invalid latest closes are not replaced by older prices; missing adjacent sessions make daily changes unavailable. Portfolio value and unrealized P&L may be partial subtotals with explicit coverage warnings. Allocation weights require valid valuations for all holdings on the latest completed session; mixed-date or incomplete coverage leaves weights unavailable. Historical stock views apply current quantities and costs to the selected date’s price, not a historical holdings ledger.
 - Workspace: `data/panel.db`; override with `PANEL_DB_PATH`.
 - Databases, personal holdings, `.env`, logs, and local review artifacts are excluded from Git.
 - The server binds to loopback. Authentication, multi-user authorization, broker execution, and public hosting are outside the current local-workspace design.
@@ -141,7 +145,7 @@ The data workspace can download a ZIP containing `alphaview.db`, `research-notes
 
 The ZIP includes saved positions, cost basis, notes, market data, scans, backtests, job records, and validated browser screening presets/universe-limit preferences. It is **not encrypted** and stays a user-triggered local download; store it somewhere appropriate for personal financial information. Unsaved note drafts, application code, environment variables, and unrelated browser storage are excluded. The manifest records versions, table counts, and SHA-256 hashes for integrity checks.
 
-A backup is not a restore operation. AlphaView does not automatically import the ZIP or overwrite the active database. Do not copy just a live `.db` file while WAL writes are active, and do not replace a running workspace’s files. A restore workflow with explicit validation remains separate work. CSV import covers portfolio rows only and is not a substitute for a full workspace backup.
+A backup is not a restore operation. AlphaView does not automatically import the ZIP or overwrite the active database. Do not copy just a live `.db` file while WAL writes are active, and do not replace a running workspace’s files. A restore workflow remains separate work. The [read-only backup preflight CLI](docs/backup-preflight.md) validates supported ZIP structure, hashes, SQLite integrity and known schemas without restoring data; unknown schemas require separate compatibility review. CSV import covers portfolio rows only and is not a substitute for a full workspace backup.
 
 [SQLite Online Backup API](https://www.sqlite.org/backup.html) · [Python `Connection.backup`](https://docs.python.org/3.12/library/sqlite3.html#sqlite3.Connection.backup)
 

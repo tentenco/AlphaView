@@ -305,7 +305,7 @@ describe('portfolio valuation coverage', () => {
     const view = render(<App />)
     await flush()
     expect(screen.getByText(/報價覆蓋 1 \/ 2 檔持股/)).toBeTruthy()
-    expect(screen.getByText('部分持股無可用估值，暫不顯示配置比例。')).toBeTruthy()
+    expect(screen.getByText('部分持股缺少當期有效估值，暫不顯示配置比例。')).toBeTruthy()
     expect(view.container.querySelector('.allocation-bar')).toBeNull()
     expect(screen.getByText('當日損益').parentElement?.querySelector('h2')?.textContent).toBe('—')
     expect(screen.getByText(/持股總市值/).parentElement?.querySelector('h2')?.textContent).toBe(

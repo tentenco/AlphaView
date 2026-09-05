@@ -91,6 +91,12 @@ def render(directory):
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
+    revisions, incomplete_revisions = receipt_lines(directory / "polling-revision-soak.jsonl")
+    if revisions:
+        passed = sum(row.get("status") == "pass" for row in revisions)
+        checks = sum(row.get("invariants", 0) for row in revisions if row.get("status") == "pass")
+        finished = (directory / "polling-revision-soak-summary.json").exists()
+        document += f'<section><h2>隔離版本同步長時間檢查</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(revisions)} 輪 · {checks} 項一致性檢查通過 · {len(revisions) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(revisions[-1]["at"]))}。<br>以合成資料驗證同時間戳修改、作業與資料版本分離、未提交讀取、回復、程序中斷及重啟；不連接實際資料庫。</p></section>'
     resilience_path = directory / "resilience-soak-30m.json"
     if resilience_path.exists():
         try:

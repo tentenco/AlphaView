@@ -16,7 +16,7 @@ RUN_LOCK = WorkspaceLock()
 
 class JobInput(BaseModel):
     scope: Literal["portfolio", "market"] = "portfolio"
-    kind: Literal["refresh", "scan", "retry"]
+    kind: Literal["refresh", "scan", "retry", "resume"]
     symbols: list[str] = Field(default_factory=list, max_length=100)
     universe_limit: Literal[250, 500, 1000] = 250
 
@@ -66,12 +66,15 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
 
     try:
         check_cancel()
-        if kind in {"refresh", "retry"}:
+        if kind == "resume":
+            market.resume_refresh(progress, scope=scope, check_cancel=check_cancel, report=result)
+        elif kind in {"refresh", "retry"}:
             result["market"] = market.refresh(progress, scope=scope, symbols=symbols if kind == "retry" else None, check_cancel=check_cancel, universe_limit=universe_limit)
         check_cancel()
         scopes = [scope]
-        if kind == "retry":
-            requested = set(symbols or [])
+        if kind in {"retry", "resume"}:
+            requested = (set(symbols or []) if kind == "retry" else
+                         {row["symbol"] for row in result.get("market", []) if row.get("action") == "downloaded"})
             other = "portfolio" if scope == "market" else "market"
             if requested & {p["symbol"] for p in store.universe(other)}:
                 scopes.append(other)
@@ -115,6 +118,9 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
             + ("；已同步重算另一股票池" if len(scopes) > 1 else ""))
         if short_history:
             summary += f"；{len(short_history)} 檔有效歷史尚未達部分策略觀察期，並非更新失敗"
+        if kind == "resume":
+            coverage = result["resume"]
+            summary += f"；續跑保留 {coverage['skipped']} 檔已通過日線、更新 {coverage['downloaded']} 檔、失敗 {coverage['failed']} 檔"
         # Cancellation requested before terminal commit remains visible and wins.
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")

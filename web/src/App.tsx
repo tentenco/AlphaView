@@ -27,6 +27,7 @@ import { MarketOverview } from './MarketOverview'
 import { WorkspaceBackup } from './WorkspaceBackup'
 import { ScheduleSettings } from './ScheduleSettings'
 import { StorageMaintenance } from './StorageMaintenance'
+import { ResumeUpdate } from './ResumeUpdate'
 import { PriceChart } from './Charts'
 
 type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
@@ -257,7 +258,7 @@ function Home({
               ))}
             </div>
           ) : (
-            <p className="footnote">部分持股無可用估值，暫不顯示配置比例。</p>
+            <p className="footnote">部分持股缺少當期有效估值，暫不顯示配置比例。</p>
           )}
           <div className="allocation-list">
             {holding.map((p, i) => (
@@ -343,11 +344,13 @@ function DataPage({
   busy,
   onRetry,
   onOpen,
+  onResume,
 }: {
   data: Overview
   onRefresh: () => void
   busy: boolean
   onRetry: (symbols: string[]) => Promise<void>
+  onResume: (scope: Scope) => Promise<void>
   onOpen: (symbol: string) => void
 }) {
   const total = data.datasets.reduce((n, d) => n + d.bar_count, 0)
@@ -400,6 +403,12 @@ function DataPage({
           </div>
         </div>
       </div>
+      <ResumeUpdate
+        marketCount={data.market_universe.length}
+        portfolioCount={data.positions.length}
+        busy={busy}
+        onResume={onResume}
+      />
       <ScheduleSettings
         defaultUniverseLimit={
           Math.max(data.market_universe.length, data.market_universe_meta?.requested_limit || 0) >
@@ -518,11 +527,13 @@ function DataPage({
                 <div>
                   <strong>
                     {job.scope === 'market' ? '市場候選 · ' : '我的清單 · '}
-                    {job.kind === 'retry'
-                      ? '指定標的重試與掃描'
-                      : job.kind === 'refresh'
-                        ? '行情更新與策略掃描'
-                        : '策略掃描'}
+                    {job.kind === 'resume'
+                      ? '續跑行情更新與掃描'
+                      : job.kind === 'retry'
+                        ? '指定標的重試與掃描'
+                        : job.kind === 'refresh'
+                          ? '行情更新與策略掃描'
+                          : '策略掃描'}
                   </strong>
                   <small>{job.error || job.progress}</small>
                 </div>
@@ -745,7 +756,13 @@ export default function App() {
         }),
       })
       pendingJob.current = started.id
-      setToast(kind === 'refresh' ? '行情更新已開始，完成後自動計算每日選股。' : '選股計算已開始。')
+      setToast(
+        kind === 'resume'
+          ? '續跑更新已開始，將沿用通過檢查的當期行情。'
+          : kind === 'refresh'
+            ? '行情更新已開始，完成後自動計算每日選股。'
+            : '選股計算已開始。',
+      )
       await load()
     } catch (err) {
       setToast((err as Error).message)
@@ -982,6 +999,7 @@ export default function App() {
               <DataPage
                 data={data}
                 onRefresh={() => run('refresh')}
+                onResume={(scope) => run('resume', scope)}
                 busy={busy}
                 onOpen={(symbol) =>
                   openStock(

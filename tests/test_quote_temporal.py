@@ -123,3 +123,26 @@ def test_weekend_stock_uses_matching_prior_session_scan(client):
     result=client.get('/api/stocks/A?as_of=2024-01-06').json()
     assert result['position']['research']==row
     assert client.get('/api/stocks/A?as_of=0001-01-01').status_code==422
+
+
+def test_allocation_requires_all_holdings_on_current_session(client):
+    current=client.get('/api/overview').json()
+    assert [p['weight'] for p in current['positions']]==[50,50]
+    with store.connect() as db:
+        db.execute("DELETE FROM bars WHERE symbol='B' AND date='2024-01-05'")
+    mixed=client.get('/api/overview').json()
+    assert mixed['summary']['mixed_dates']
+    assert all(p['weight'] is None for p in mixed['positions'])
+    assert all(p['market_value']==100 for p in mixed['positions'])
+    with store.connect() as db:
+        db.execute("DELETE FROM bars WHERE symbol='A' AND date='2024-01-05'")
+    stale=client.get('/api/overview').json()
+    assert all(p['weight'] is None for p in stale['positions'])
+
+
+def test_missing_daily_change_does_not_hide_current_allocation(client):
+    with store.connect() as db:
+        db.execute("DELETE FROM bars WHERE date='2024-01-04'")
+    result=client.get('/api/overview').json()
+    assert result['summary']['day_change_partial']
+    assert all(p['quote_status']=='partial' and p['weight']==50 for p in result['positions'])

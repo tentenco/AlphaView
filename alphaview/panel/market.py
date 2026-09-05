@@ -261,3 +261,97 @@ def refresh(progress=lambda message: None, scope="portfolio", symbols=None, chec
             progress(f"已更新 {len(results)}/{len(members)} 檔 · {result['symbol']}")
     check_cancel()
     return results
+
+
+def _resume_reason(symbol, frame, dataset, expected):
+    """None means a successful, identified current cache can be reused."""
+    if dataset.get('status') != 'ok' or dataset.get('error'):
+        return '先前來源更新未成功，需重新確認'
+    if dataset.get('currency') != 'USD':
+        return '缺少可確認的美元標的資訊'
+    name, exchange = dataset.get('name'), dataset.get('exchange')
+    if not isinstance(name, str) or not name.strip() or name.strip().upper() == symbol.upper():
+        return '缺少實際標的名稱，代碼替代文字不視為身份確認'
+    if not isinstance(exchange, str) or not exchange.strip():
+        return '缺少交易所資訊'
+    if dataset.get('source') != 'Yahoo Finance / yfinance':
+        return '快取來源無法確認'
+    if frame.empty:
+        return '尚無歷史日線'
+    if dataset.get('bar_count') != len(frame):
+        return '來源筆數與已儲存日線不一致'
+    if dataset.get('last_date') != expected or str(frame.iloc[-1].date) != expected:
+        return '日線尚未涵蓋預期交易日或包含未完成日期'
+    if symbol == 'SPCX' and (not any(word in name.lower() for word in ('space exploration', 'spacex'))
+                             or any(str(day) < '2026-06-12' for day in frame.date)):
+        return 'SPCX 身份或上市日期尚未通過確認'
+    try:
+        valid = history_quality(frame)['valid']
+    except (ValueError, TypeError, OverflowError):
+        valid = False
+    if not valid:
+        return '歷史日線結構或交易日覆蓋未通過檢查'
+    return None
+
+
+def resume_refresh(progress=lambda message: None, scope='portfolio', check_cancel=lambda: None, report=None):
+    """Reuse eligible cache in current membership; caller owns workspace writer lock.
+
+    Unlike refresh this never rediscovers membership. Successful source data can
+    be retained even when a prior scan/job failed. A source error is always retried
+    once. Mutable report records observed progress even if cancellation interrupts.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    if scope not in ('portfolio', 'market'):
+        raise ValueError('續跑需指定市場或持股股票池')
+    check_cancel()
+    expected = latest_completed_session()
+    report = report if report is not None else {}
+    results = report.setdefault('market', [])
+    summary = report.setdefault('resume', {})
+    # Scope snapshot is short. Do not hold a shared read transaction across the
+    # cancellation callback: it must see newly committed cancellation requests.
+    with store.read_snapshot():
+        members = store.universe(scope)
+        datasets = {row['symbol']: row for row in store.dataset_rows()}
+    summary.update(scope=scope, expected_session=expected, total=len(members),
+                   skipped=0, downloaded=0, failed=0, attempted=0, processed=0, counts_complete=False)
+    if not members:
+        raise ValueError('目前股票池沒有標的；請先建立股票池或加入觀察清單')
+    pending = []
+    for member in members:
+        check_cancel()
+        symbol = member['symbol']
+        reason = _resume_reason(symbol, store.history(symbol), datasets.get(symbol, {}), expected)
+        if reason is None:
+            results.append(dict(symbol=symbol,status='ok',action='cached',rows=datasets[symbol]['bar_count'],last_date=expected))
+            summary['skipped'] += 1
+            summary['processed'] += 1
+        else:
+            pending.append((symbol,reason))
+        progress(f"續跑檢查 {len(results) + len(pending)}/{len(members)} 檔 · 保留 {summary['skipped']} 檔已通過日線")
+    check_cancel()
+
+    def download(symbol, reason):
+        check_cancel()
+        try:
+            return {**fetch_symbol(symbol), 'status':'ok','action':'downloaded','resume_reason':reason}
+        except Exception as exc:
+            error = str(exc)[:400]
+            with store.connect() as db:
+                db.execute("""INSERT INTO datasets(symbol,status,error) VALUES (?,'error',?)
+                    ON CONFLICT(symbol) DO UPDATE SET status='error',error=excluded.error""",(symbol,error))
+            return dict(symbol=symbol,status='error',action='downloaded',resume_reason=reason,error=error)
+
+    with ThreadPoolExecutor(max_workers=4 if scope == 'market' else 1) as pool:
+        tasks = [pool.submit(download,symbol,reason) for symbol,reason in pending]
+        for task in as_completed(tasks):
+            entry = task.result()
+            results.append(entry)
+            summary['attempted'] += 1
+            summary['processed'] += 1
+            summary['downloaded' if entry['status']=='ok' else 'failed'] += 1
+            progress(f"續跑處理 {summary['processed']}/{len(members)} 檔 · 保留 {summary['skipped']}、更新 {summary['downloaded']}、失敗 {summary['failed']}")
+    check_cancel()
+    summary['counts_complete'] = True
+    return report
