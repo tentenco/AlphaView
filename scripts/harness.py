@@ -194,7 +194,7 @@ summary{cursor:pointer;line-height:1.7;color:#b9c5bf}section{scroll-margin-top:2
     document += section('active', '斷點中的工作', '目前沒有進行中的項目。')
     document += section('deferred', '未完成事項與限制', '尚未整理限制；請以事件紀錄與下一輪待辦核對。')
     document += section('review_steps', '使用者檢查步驟', '請開啟本機 AlphaView，依本輪已完成項目進行檢查。')
-    for filename, caption in (("market-overview.png", "市場概況：已保存畫面，數值以擷取時點為準；最新涵蓋率見本報告限制與證據"), ("comparison-desktop.png", "標的價格比較：共同期間、資料不足原因與已收合的股票池；圖示為擷取時的價格研究結果")):
+    for filename, caption in (("screener-new-candidates.png", "每日選股：實際市場股票池999檔，177檔符合策略；僅看新標的時顯示176檔。畫面為2026-09-05本地已存日線結果，不是即時行情"), ("market-overview.png", "市場概況：已保存畫面，數值以擷取時點為準；最新涵蓋率見本報告限制與證據"), ("comparison-desktop.png", "標的價格比較：共同期間、資料不足原因與已收合的股票池；圖示為擷取時的價格研究結果")):
         screenshot = directory / filename
         if screenshot.exists():
             encoded = base64.b64encode(screenshot.read_bytes()).decode("ascii")
