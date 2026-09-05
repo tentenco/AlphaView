@@ -115,6 +115,16 @@ def render(directory):
             if failures:
                 document += '<p>失敗紀錄：' + '<br>'.join(esc(row.get("error", row.get("reason", row.get("scenario", "未分類")))) for row in failures) + '</p>'
             document += '</section>'
+    comparison_path = directory / "price-repair-summary.json"
+    if comparison_path.exists():
+        comparison = json.loads(comparison_path.read_text())
+        document += '<section><h2>原始行情與修復版本的隔離比對</h2><p>未採用任何價格，也未修改應用資料庫。結構檢查通過不代表重建價格已獨立驗證；需核對公司行動及調整方式。以下為實際診斷結果。</p>'
+        for row in comparison.get("rows", []):
+            document += f'<article><h3>{esc(row["symbol"])}</h3><p>原始 {esc(row["raw_rows"])} 筆日線／{esc(row["raw_invalid"])} 筆異常；修復 {esc(row["repair_rows"])} 筆／{esc(row["repair_invalid"])} 筆結構異常。<br>{esc(row["changed_cells"])} 個欄位值改變（不含修復旗標）；新增 {len(row["added_dates"])} 日、移除 {len(row["missing_dates"])} 日。<br>檢查時間（臺灣時間）：{esc(taipei(row["started_at"]))} — {esc(taipei(row["finished_at"]))}</p><details><summary>查看差異範例與資料雜湊</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7">'
+            evidence = {"raw_sha256": row["raw_sha256"], "repair_sha256": row["repair_sha256"], "hash_basis": "normalized row JSON; nonfinite values serialized as null", "examples": row["examples"]}
+            document += esc(json.dumps(evidence, ensure_ascii=False, indent=2)) + '</pre></details></article>'
+        document += '</section>'
+    document += section('workflow', '本輪協作與驗證分工', '動態子代理協作。')
     document += section('completed', '已完成的開發', '尚未整理完成項目；以下事件紀錄保留目前進度。')
     document += section('evidence', '驗證證據', '尚未附上驗證證據。')
     document += section('active', '斷點中的工作', '目前沒有進行中的項目。')

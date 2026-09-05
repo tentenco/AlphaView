@@ -1,4 +1,7 @@
 
+import math
+from numbers import Real
+
 import numpy as np
 import pandas as pd
 
@@ -74,6 +77,25 @@ def validate_bars(frame, check_sessions=True):
     return result.sort_values("date").reset_index(drop=True)
 
 
+def display_name(metadata, symbol):
+    """Optional provider labels are text, never identities inferred from objects."""
+    for key in ("longName", "shortName"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return symbol
+
+
+def eligible_market_cap(value):
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+        return None
+    try:
+        value = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return value if math.isfinite(value) and value >= 2_000_000_000 else None
+
+
 def fetch_symbol(symbol):
     import yfinance as yf
     ticker = yf.Ticker(symbol)
@@ -82,10 +104,14 @@ def fetch_symbol(symbol):
     if frame.empty:
         raise ValueError("資料源未回傳日線；請確認代碼或稍後重試")
     meta = ticker.get_history_metadata() or {}
+    if not isinstance(meta, dict):
+        raise ValueError("資料源標的資訊格式無效；未替換原有資料")
     currency = meta.get("currency")
     if currency != "USD":
         raise ValueError(f"此面板目前僅支援美元標的；資料源幣別為 {currency}")
-    name = meta.get("longName") or meta.get("shortName") or symbol
+    name = display_name(meta, symbol)
+    exchange = meta.get("exchangeName")
+    exchange = exchange.strip() or None if isinstance(exchange, str) else None
     if symbol == "SPCX" and not any(s in name.lower() for s in ("space exploration", "spacex")):
         raise ValueError(f"SPCX 身分待確認：資料源回傳 {name}，未匯入以免混用舊 ETF")
     frame = frame.copy()
@@ -113,7 +139,7 @@ def fetch_symbol(symbol):
           name=excluded.name,currency=excluded.currency,exchange=excluded.exchange,
           fetched_at=excluded.fetched_at,last_date=excluded.last_date,
           bar_count=excluded.bar_count,status='ok',error=NULL""",
-          (symbol, name, currency, meta.get("exchangeName"), store.now(),
+          (symbol, name, currency, exchange, store.now(),
            frame["date"].max(), len(frame)))
     return {"symbol": symbol, "rows": len(frame), "last_date": frame["date"].max()}
 
@@ -166,7 +192,7 @@ def discover_universe(universe_limit=250, progress=lambda message: None, check_c
         expected = min(size, max(0, total - offset))
         if len(quotes) != expected:
             raise ValueError("市場股票池分頁筆數不足或超出預期，保留原股票池")
-        signature = tuple(q.get("symbol") if isinstance(q, dict) else None for q in quotes)
+        signature = tuple(q.get("symbol") if isinstance(q, dict) and isinstance(q.get("symbol"), str) else None for q in quotes)
         if signature in seen_pages:
             raise ValueError("資料源重複回傳相同股票池頁面，保留原股票池")
         seen_pages.add(signature)
@@ -174,11 +200,13 @@ def discover_universe(universe_limit=250, progress=lambda message: None, check_c
             if not isinstance(quote, dict):
                 continue
             symbol = quote.get("symbol", "")
-            if (isinstance(symbol, str) and quote.get("quoteType") == "EQUITY" and quote.get("currency") == "USD"
-                    and quote.get("exchange") in {"NMS", "NYQ"} and re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", symbol)):
-                entries.setdefault(symbol, (symbol, quote.get("longName") or quote.get("shortName") or symbol,
+            exchange = quote.get("exchange")
+            market_cap = eligible_market_cap(quote.get("marketCap"))
+            if (market_cap is not None and isinstance(symbol, str) and quote.get("quoteType") == "EQUITY" and quote.get("currency") == "USD"
+                    and isinstance(exchange, str) and exchange in {"NMS", "NYQ"} and re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", symbol)):
+                entries.setdefault(symbol, (symbol, display_name(quote, symbol),
                                             f"Yahoo Equity Screener · 市值排序擷取最多 {universe_limit} 檔",
-                                            timestamp, quote.get("marketCap")))
+                                            timestamp, market_cap))
         pages += 1
         offset += len(quotes)
         if not quotes:

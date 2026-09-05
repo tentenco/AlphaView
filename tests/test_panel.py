@@ -220,7 +220,7 @@ def test_market_discovery_validates_source_and_preserves_previous_on_failure(pan
             market.discover_universe()
     assert store.universe('market') == before
     quotes = [{'symbol': f'T{i}', 'quoteType': 'EQUITY', 'currency': 'USD', 'exchange': 'NMS',
-               'shortName': f'Test {i}'} for i in range(25)]
+               'shortName': f'Test {i}', 'marketCap': 3_000_000_000} for i in range(25)]
     quotes += [{'symbol': 'BAD', 'quoteType': 'ETF', 'currency': 'USD', 'exchange': 'NMS'}]
     with patch.object(yf, 'screen', return_value={'quotes': quotes, 'start': 0, 'total': len(quotes)}):
         assert market.discover_universe() == 25

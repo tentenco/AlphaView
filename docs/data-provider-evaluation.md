@@ -42,3 +42,39 @@ Adjusted daily 回傳原始 OHLCV、調整收盤及拆股／股息資料；`comp
 驗收至少涵蓋：429／逾時及取消不發布、全 NaN 與部分缺欄、split／dividend 跨日調整、`Repaired?` 假但調整價有變、缺交易日不補值、UTC／美東日期與提早收盤、非 USD 或代碼身分漂移、100 筆不足暖機、跨供應者不靜默拼接、資料版本改變使回測快取失效、使用者取消比較不修改行情。
 
 成功條件是「可追蹤地恢復經驗證的資料，否則維持明確不可用」，不是讓所有畫面都出現數字。以上皆為下一輪設計建議，尚未實作自動 repair、替代資料來源或 SPY 基準。
+
+## 本輪限定診斷：SPY 與 APH
+
+2026-09-05 00:38–00:40 UTC 執行兩次隔離診斷，沒有採用價格、更新應用資料庫或更動專案依賴。第一輪使用專案環境，raw 成功，但 repair 因缺少 `sklearn` 失敗；第二輪以 `uv run --no-project` 暫時提供 yfinance 1.7.0、scikit-learn、exchange-calendars 與 FastAPI。這不是所有 95 檔的恢復測試。
+
+| 標的 | raw 無效日期／非有限或缺值欄位 | repair 結構驗證 | 非 `Repaired?` 欄位變更 |
+| --- | --- | --- | --- |
+| SPY | 1 日／2 格；2026-09-04 Close、Adj Close | 通過 | 2 格，由不可用變為 769.55 |
+| APH | 5 日／22 格；2026-08-28、09-01 至 09-04 | 通過 | 3,008 格；包含歷史價格減半、成交量加倍 |
+
+四份結果各有 502 個日期，raw／repair 之間未新增或移除日期。APH 的例子：2024-09-05 Close 從 61.86000061035156 變成 30.93000030517578，Volume 從 5,158,600 變成 10,317,200。大量改寫不能描述成只補最近缺值。
+
+可於本地忽略目錄查看完整證據：`artifacts/price-repair-20260905T003812Z-8aad3053/` 與 `artifacts/price-repair-20260905T003913Z-ee743a46/`。這些資料不隨 GitHub 發布。JSON 保存每欄差異、品質問題、來源身分、獨立抓取時間及資料雜湊；雜湊對象是正規化的列資料 JSON，非 HTTP 原始回應。非有限值轉為 null 並另列問題。
+
+### APH 公司行動的獨立證據
+
+Amphenol 官方 2026-08-06 新聞稿與 SEC 8-K 都記載董事會核准二拆一，以股票股利形式對 2026-08-17 登記股東預定於 2026-09-02 配發。這項已公布的公司行動，為觀察到的二倍尺度差異提供合理背景；這兩份公告本身不等於事後完成證明，也沒有驗證供應者每根 bar 應採哪個調整因子。[官方 IR 公告](https://investors.amphenol.com/news-and-events/news-details/2026/Amphenol-Announces-Two-for-One-Stock-Split-and-Third-Quarter-2026-Dividend/default.aspx) · [SEC 2026-08-06 8-K](https://www.sec.gov/Archives/edgar/data/820313/000110465926091969/tm2622441d1_8k.htm)
+
+另有一次 2024 年二拆一，2024 年報明確記載 6 月 11 日配發、6 月 12 日開始按拆股後基礎交易。那次事件早於本次兩年診斷起日，不能與 2026 年事件混為一談。[SEC 2024 年報](https://www.sec.gov/Archives/edgar/data/820313/000155837025000714/aph-20241231x10k.htm)
+
+**結論：公司行動公告可以核實；repair 價量正確性尚未證明。** 原始序列也可能已經調整過，單憑存在二拆一就再除以二，可能造成重複調整。需另查交易生效日期、原始與修復序列在事件前後的尺度、調整因子與獨立日線，逐欄核對後再決定是否採用。raw 與 repair 是先後兩次請求，供應者期間更新也可能造成差異。
+
+### 診斷 CLI 重現與停止
+
+`scripts/compare_price_repair.py` 限制最多五檔，每檔子程序最多 180 秒、總下載預算最多 480 秒；以下示例限定兩檔並綁定本輪停止時間與 STOP 檔案：
+
+```sh
+uv run --no-project --with yfinance==1.7.0 --with scikit-learn --with exchange-calendars --with fastapi \
+  python scripts/compare_price_repair.py SPY APH \
+  --stop-at 2026-09-05T03:47:25+00:00 \
+  --stop-marker artifacts/harness-2026-09-05/STOP
+```
+
+這是重現命令，不代表文件更新時又重新下載。依賴安裝時間不在 CLI 子程序下載預算內；啟動後仍受絕對 `--stop-at` 限制。STOP 檔案存在時不啟動新請求，執行中的 worker 會在父程序下一次檢查時終止並回收。既有輸出目錄／證據檔案不覆寫。
+
+後續執行的產物新增 Python、pandas、NumPy、yfinance 與選用 scikit-learn／SciPy 的實際版本，以及明確雜湊基礎。上述舊產物維持原樣，不追補未在當時記錄的版本資訊。repair 結果仍只供比較，不會寫入 AlphaView 行情或解鎖 SPY 基準。

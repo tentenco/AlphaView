@@ -75,7 +75,7 @@ def test_cancel_after_pool_publication_exposes_retained_scan_context_until_resca
 
     def provider(query, *, size, offset, **kwargs):
         return {"total": 500, "start": offset, "quotes": [
-            {"symbol": f"S{i}", "shortName": f"Stock {i}", "quoteType": "EQUITY", "currency": "USD", "exchange": "NMS"}
+            {"symbol": f"S{i}", "shortName": f"Stock {i}", "quoteType": "EQUITY", "currency": "USD", "exchange": "NMS", "marketCap": 3_000_000_000}
             for i in range(offset, offset + size)]}
 
     def cancel_after_discovery(*args, **kwargs):

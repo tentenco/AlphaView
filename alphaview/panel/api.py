@@ -124,7 +124,8 @@ def overview():
     with store.connect() as db:
         scans = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='portfolio' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         market_dates = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='market' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
-        jobs = [dict(r) for r in db.execute("SELECT * FROM jobs ORDER BY started_at DESC LIMIT 10")]
+        # Polling needs public job state, not the potentially large stored result payload.
+        jobs = [dict(r) for r in db.execute("SELECT id,kind,status,started_at,finished_at,progress,error,scope,cancel_requested FROM jobs ORDER BY started_at DESC LIMIT 10")]
     matched = [r for r in recent["result"] if any(s["matched"] for s in r["signals"])] if recent else []
     return {"positions": items, "summary": {"market_value": total, "pnl": pnl,
         "pnl_pct": quotes.finite(pnl / cost * 100) if pnl is not None and cost else None,
