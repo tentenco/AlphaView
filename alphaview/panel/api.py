@@ -18,6 +18,7 @@ from .portfolio_transfer import router as portfolio_transfer_router
 from .backups import router as backups_router
 from .risk import router as risk_router
 from .storage_maintenance import router as storage_router
+from . import comparison
 
 
 @asynccontextmanager
@@ -43,6 +44,7 @@ app.include_router(backups_router)
 app.include_router(scheduler.router)
 app.include_router(risk_router)
 app.include_router(storage_router)
+app.include_router(comparison.router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 
@@ -82,7 +84,7 @@ class BacktestInput(BaseModel):
 
 def research_revision(expected_session):
     revision = store.revision(expected_session)
-    return {**revision, "revision": f"{revision['revision']}:{scan_provenance.SCAN_ENGINE_VERSION}:{research.BACKTEST_ENGINE_VERSION}"}
+    return {**revision, "revision": f"{revision['revision']}:{scan_provenance.SCAN_ENGINE_VERSION}:{research.BACKTEST_ENGINE_VERSION}:{comparison.COMPARISON_ENGINE_VERSION}"}
 
 
 def verified_research(snapshot, row, expected_session, scope):

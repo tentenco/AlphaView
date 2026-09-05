@@ -43,3 +43,9 @@ Tests use temporary databases and mocked provider data. Runtime checks may use t
 ## Next-run review
 
 Review `review.html` and approve the next priorities based on value and data readiness. Candidate features requiring new provider access or public deployment need their own scope and verification. Do not treat the comparison document's initial gap list as the final implementation status.
+
+## 並行開發期間的長測來源
+
+`scripts/polling_revision_soak.py` 的 CLI 會先複製 Python 應用程式與測試 runner 到暫存目錄，父程序與後續 spawn 子程序均載入同一份副本。來源清單與 SHA-256 留在輸出資料夾，並記錄當時 Git commit 與是否有未提交修改。長測只使用合成 SQLite 資料並停用網路；暫存副本隨程序結束清除。
+
+這避免開發中修改 API 回應格式，造成長測父子程序比較不同版本的回應。既有失敗紀錄必須保留；新的通過紀錄不能抹除先前的逾時或其他失敗。未保存比較 payload 的歷史失敗，不得僅憑事後重現就宣稱原因已完全確定。

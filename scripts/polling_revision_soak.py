@@ -1,5 +1,7 @@
 """Isolated SQLite revision soak. No HTTP/provider access or user database reads."""
 import argparse
+import hashlib
+import subprocess
 import json
 import multiprocessing
 import os
@@ -126,6 +128,9 @@ def run(directory, seconds, interval, stop_directory=None):
     started = time.monotonic()
     summary = {'started_at': datetime.now(timezone.utc).isoformat(), 'requested_seconds': seconds,
                'cycles': 0, 'failures': 0, 'status_reads': 0, 'invariants': 0, 'status_latency_ms_max': 0, 'network_disabled': True, 'synthetic_only': True}
+    manifest_path = directory / 'polling-revision-source-manifest.json'
+    if manifest_path.exists():
+        summary['source_snapshot_sha256'] = json.loads(manifest_path.read_text())['sha256']
     socket.create_connection = no_network
     socket.socket.connect = no_network
     with tempfile.TemporaryDirectory(prefix='alphaview-revision-soak-') as temporary:
@@ -170,13 +175,49 @@ def run(directory, seconds, interval, stop_directory=None):
     return summary
 
 
+def frozen_run(args):
+    directory = args.directory.resolve()
+    stop_directory = (args.stop_directory or args.directory).resolve()
+    directory.mkdir(parents=True, exist_ok=True)
+    def git(*arguments):
+        result = subprocess.run(['git', *arguments], cwd=ROOT, capture_output=True, text=True, timeout=5)
+        return result.stdout.strip() if result.returncode == 0 else None
+    with tempfile.TemporaryDirectory(prefix='alphaview-soak-source-') as temporary:
+        frozen = Path(temporary)
+        paths = sorted((ROOT / 'alphaview').rglob('*.py')) + [Path(__file__).resolve()]
+        hashes = {}
+        for path in paths:
+            if '__pycache__' in path.parts:
+                continue
+            relative = path.relative_to(ROOT)
+            payload = path.read_bytes()
+            target = frozen / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
+            hashes[str(relative)] = hashlib.sha256(payload).hexdigest()
+        manifest = {'sha256': hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest(),
+                    'files': hashes, 'git_commit': git('rev-parse', 'HEAD'),
+                    'git_dirty': bool(git('status', '--porcelain')), 'frozen': True,
+                    'created_at': datetime.now(timezone.utc).isoformat()}
+        (directory / 'polling-revision-source-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+        # Copy code only; no .env, database, user artifacts or holdings are included.
+        # Spawn descendants import this same immutable ROOT, never the edited checkout.
+        completed = subprocess.run([sys.executable, str(frozen / 'scripts/polling_revision_soak.py'),
+            '--frozen-source', '--directory', str(directory), '--stop-directory', str(stop_directory),
+            '--seconds', str(args.seconds), '--interval', str(args.interval)], cwd=frozen)
+        return completed.returncode
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--frozen-source', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--directory', type=Path, default=Path('artifacts/harness-2026-09-05'))
     parser.add_argument('--stop-directory', type=Path)
     parser.add_argument('--seconds', type=float, default=2700)
     parser.add_argument('--interval', type=float, default=8)
     args = parser.parse_args()
+    if not args.frozen_source:
+        return frozen_run(args)
     summary = run(args.directory, args.seconds, args.interval, args.stop_directory)
     return 1 if summary['failures'] else 0
 

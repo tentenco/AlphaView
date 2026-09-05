@@ -14,6 +14,7 @@ import {
   Renew,
   Search,
   ChartEvaluation,
+  Compare,
   WarningAlt,
 } from '@carbon/icons-react'
 import type { Overview, Position, StockDetail, Scope } from './types'
@@ -30,14 +31,16 @@ import { StorageMaintenance } from './StorageMaintenance'
 import { ResumeUpdate } from './ResumeUpdate'
 import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { PriceChart } from './Charts'
+import { Comparison } from './Comparison'
 
-type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
+type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'comparison' | 'data'
 const nav = [
   { id: 'overview', title: '投資總覽', icon: Dashboard },
   { id: 'market', title: '市場概況', icon: ChartEvaluation },
   { id: 'screener', title: '每日選股', icon: Filter },
   { id: 'portfolio', title: '我的持股', icon: PortfolioIcon },
   { id: 'strategies', title: '策略研究', icon: ChartLine },
+  { id: 'comparison', title: '標的比較', icon: Compare },
   { id: 'data', title: '資料管理', icon: DataBase },
 ] as const
 
@@ -940,7 +943,7 @@ export default function App() {
       <main className="main">
         <div className="breadcrumb">
           個人工作區 <span>/</span> <strong>{nav.find((n) => n.id === page)?.title}</strong>
-          {page !== 'data' && page !== 'screener' && page !== 'market' && (
+          {page !== 'data' && page !== 'screener' && page !== 'market' && page !== 'comparison' && (
             <button
               type="button"
               className="text-button"
@@ -1035,7 +1038,8 @@ export default function App() {
                 onAdded={() => load()}
               />
             )}{' '}
-            {page === 'strategies' && <Strategies data={data} />}{' '}
+            {page === 'strategies' && <Strategies data={data} />}
+            {page === 'comparison' && <Comparison data={data} onOpen={openStock} />}
             {page === 'data' && (
               <DataPage
                 data={data}

@@ -91,7 +91,7 @@ def render(directory):
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
-    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）")):
+    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）"), (directory / "polling-revision-frozen", "隔離版本同步長時間檢查（固定程式版本）")):
         revisions, incomplete_revisions = receipt_lines(folder / "polling-revision-soak.jsonl")
         if not revisions:
             continue
@@ -99,7 +99,11 @@ def render(directory):
         checks = sum(row.get("invariants", 0) for row in revisions if row.get("status") == "pass")
         summary_path = folder / "polling-revision-soak-summary.json"
         finished = summary_path.exists()
-        document += f'<section><h2>{esc(label)}</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(revisions)} 輪 · {checks} 項一致性檢查通過 · {len(revisions) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(revisions[-1]["at"]))}。<br>以合成資料驗證同時間戳修改、作業與資料版本分離、未提交讀取、回復、程序中斷及重啟；不連接實際資料庫。</p>'
+        document += f'<section><h2>{esc(label)}</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(revisions)} 輪 · {checks} 項一致性檢查通過 · {len(revisions) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(revisions[-1]["at"]))}。<br>以合成資料驗證同時間戳修改、作業與資料版本分離、未提交讀取、回復、程序中斷及重啟；不連接實際資料庫。長測使用啟動時載入的程式，後續新增功能另依各檢查點驗證。</p>'
+        manifest_path = folder / "polling-revision-source-manifest.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text())
+            document += f'<p>固定程式副本 SHA-256：<code style="overflow-wrap:anywhere">{esc(manifest.get("sha256", "未知"))}</code>。父子程序使用同一份副本，避免開發中的檔案修改改變比較口徑。</p>'
         if finished:
             summary = json.loads(summary_path.read_text())
             document += f'<p>實際執行 {esc(summary.get("elapsed_seconds", "未知"))} 秒；停止原因：{esc(summary.get("stop_reason", "未知"))}。</p>'
@@ -114,7 +118,7 @@ def render(directory):
         passed = sum(row.get("status") == "passed" for row in provenance)
         checks = sum(row.get("checks", 0) for row in provenance if row.get("status") == "passed")
         finished = (directory / "provenance-soak-60m.summary.json").exists()
-        document += f'<section><h2>選股輸入版本長時間檢查</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(provenance)} 輪 · {checks} 項檢查通過 · {len(provenance) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(provenance[-1]["at"]))}。<br>以合成日線驗證兩個股票池的版本、行情修改後的舊訊號隔離、重算恢復，以及計算期間跨程序寫入時禁止發布。</p>'
+        document += f'<section><h2>選股輸入版本長時間檢查</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(provenance)} 輪 · {checks} 項檢查通過 · {len(provenance) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(provenance[-1]["at"]))}。<br>以合成日線驗證兩個股票池的版本、行情修改後的舊訊號隔離、重算恢復，以及計算期間跨程序寫入時禁止發布。長測使用啟動時載入的程式，後續新增功能另依各檢查點驗證。</p>'
         if len(provenance) != passed:
             document += '<ul>' + ''.join(f'<li>第 {esc(row.get("cycle"))} 輪 · {esc(row.get("error_type", "檢查失敗"))}</li>' for row in provenance if row.get("status") != "passed") + '</ul>'
         if incomplete_provenance:
@@ -167,7 +171,7 @@ def render(directory):
     document += section('active', '斷點中的工作', '目前沒有進行中的項目。')
     document += section('deferred', '未完成事項與限制', '尚未整理限制；請以事件紀錄與下一輪待辦核對。')
     document += section('review_steps', '使用者檢查步驟', '請開啟本機 AlphaView，依本輪已完成項目進行檢查。')
-    for filename, caption in (("market-overview.png", "市場概況：已保存畫面，數值以擷取時點為準；最新涵蓋率見本報告限制與證據"),):
+    for filename, caption in (("market-overview.png", "市場概況：已保存畫面，數值以擷取時點為準；最新涵蓋率見本報告限制與證據"), ("comparison-desktop.png", "標的價格比較：共同期間、資料不足原因與已收合的股票池；圖示為擷取時的價格研究結果")):
         screenshot = directory / filename
         if screenshot.exists():
             encoded = base64.b64encode(screenshot.read_bytes()).decode("ascii")
