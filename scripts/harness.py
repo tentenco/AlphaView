@@ -100,7 +100,7 @@ summary{cursor:pointer;line-height:1.7;color:#b9c5bf}section{scroll-margin-top:2
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
-    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）"), (directory / "polling-revision-frozen", "隔離版本同步長時間檢查（固定程式版本）"), (directory / "polling-revision-frozen-ipc-fixed", "隔離版本同步長時間檢查（固定版本與 IPC 修正）")):
+    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）"), (directory / "polling-revision-frozen", "隔離版本同步長時間檢查（固定程式版本）"), (directory / "polling-revision-frozen-ipc-fixed", "隔離版本同步長時間檢查（固定版本與 IPC 修正）"), (directory / "polling-revision-final-frame", "隔離版本同步長時間檢查（完整訊息期限的最終版本）")):
         revisions, incomplete_revisions = receipt_lines(folder / "polling-revision-soak.jsonl")
         if not revisions:
             continue
