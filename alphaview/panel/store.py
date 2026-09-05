@@ -1,6 +1,8 @@
 import json
 import os
 import sqlite3
+import threading
+from functools import wraps
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,9 +18,46 @@ def db_path():
     return Path(os.getenv("PANEL_DB_PATH", str(ROOT / "data/panel.db")))
 
 
+_read_scope = threading.local()
+
+
+@contextmanager
+def read_snapshot():
+    """Reuse one query-only snapshot in this synchronous thread, never workers.
+
+    Nested read helpers share it. Writes fail at SQLite rather than escaping to
+    another connection. The thread-local scope is always removed before return.
+    """
+    if getattr(_read_scope, "connection", None) is not None:
+        yield
+        return
+    with connect() as db:
+        db.execute("PRAGMA query_only=ON")
+        db.execute("BEGIN")
+        _read_scope.connection = db
+        _read_scope.path = db_path().resolve()
+        try:
+            yield
+        finally:
+            del _read_scope.connection
+            del _read_scope.path
+
+
+def snapshot_read(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with read_snapshot():
+            return function(*args, **kwargs)
+    return wrapped
+
+
 @contextmanager
 def connect():
     path = db_path()
+    shared = getattr(_read_scope, "connection", None)
+    if shared is not None and _read_scope.path == path.resolve():
+        yield shared
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(path, timeout=30)
     db.row_factory = sqlite3.Row

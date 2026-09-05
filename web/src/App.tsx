@@ -96,24 +96,32 @@ function Home({
         <div className="date-label">
           <span className="status-dot" />
           {date || '等待行情'}
+          {s.expected_session && <span className="muted">應有交易日 {s.expected_session}</span>}
           <span className="muted">美股日線</span>
         </div>
       </div>
-      {(s.partial || s.mixed_dates || s.day_change_partial) && (
+      {(s.partial || s.mixed_dates || s.day_change_partial || !!s.stale_count) && (
         <div className="notice">
           <WarningAlt size={16} />
           <div>
-            {s.partial && (
+            {s.partial && (!s.stale_count || s.priced_count < s.holding_count) && (
               <p>
                 估值資料未完整，總市值與損益僅計入可用資料；報價覆蓋 {s.priced_count} /{' '}
                 {s.holding_count} 檔持股。
               </p>
             )}
+            {!!s.stale_count && (
+              <p>
+                有 {s.stale_count} 檔持股報價過期，市值與未實現損益包含舊日期報價；當期報價覆蓋{' '}
+                {s.current_priced_count ?? 0} / {s.holding_count} 檔，應有交易日{' '}
+                {s.expected_session || '—'}。請更新行情後再比較當日變化。
+              </p>
+            )}
             {s.mixed_dates && <p>各持股報價日期不同，總值為各自最新可用收盤價合計。</p>}
             {s.day_change_partial && (
               <p>
-                當日損益資料未完整或交易日不一致，暫不合計；可比較 {s.day_change_covered_count ?? 0}{' '}
-                / {s.holding_count} 檔持股。
+                當日損益資料未完整、報價過期或交易日不一致，暫不合計；可比較{' '}
+                {s.day_change_covered_count ?? 0} / {s.holding_count} 檔持股。
               </p>
             )}
           </div>
@@ -133,10 +141,14 @@ function Home({
           <div>
             <p>當日損益</p>
             <h2>
-              <Delta value={s.day_change_partial ? null : s.day_change} percent={false} />
+              <Delta
+                value={s.day_change_partial || s.stale_count ? null : s.day_change}
+                percent={false}
+              />
             </h2>
             <small>
-              <Delta value={s.day_change_partial ? null : s.day_change_pct} /> 對比前一交易日
+              <Delta value={s.day_change_partial || s.stale_count ? null : s.day_change_pct} />{' '}
+              對比前一交易日
             </small>
           </div>
           <div>

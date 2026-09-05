@@ -4,7 +4,11 @@
 
 **Powered by [Tentenai.com](https://tentenai.com)** · [繁體中文使用指南](WEB_PANEL.md)
 
-AlphaView brings market screening, transparent technical signals, and historical backtests into one focused dashboard. Your positions and research stay in a local SQLite database. Quotes are daily market data, not a real-time trading feed.
+AlphaView brings market screening, transparent technical signals, and historical backtests into one focused dashboard. Your positions and research stay in a local SQLite database. Quotes are daily market data, not a real-time trading feed. Stale valuations retain their dates and show coverage warnings; unclosed future quotes and unavailable daily changes remain blank.
+
+![AlphaView market overview with data coverage and strategy breadth](docs/images/market-overview.png)
+
+*Market overview captured on September 5, 2026. The screenshot shows a saved research snapshot, not live quotes or a personal portfolio.*
 
 ## What you can do
 
@@ -155,3 +159,5 @@ The data page previews logical payload bytes, row counts, physical database/WAL 
 Cleanup requires a current preview and explicit confirmation. It removes only superseded scan snapshots, keeping the latest ID for every `(scope, date)`; positions, notes, bars, backtests, jobs, and scheduler attempt records stay intact. If the snapshot set changes or another data job is running, reload the preview. A local backup download is available before cleanup. There is no automatic cleanup or `VACUUM`: freed pages can be reused, so deleting rows need not shrink the file.
 
 The portfolio editor sends `expected_updated_at` with each save and rejects conflicting edits with HTTP 409; reopen the editor to review the latest record before saving. New entries send a null expectation and also detect a concurrent addition. Legacy API clients that omit this field retain last-write-compatible behavior and do not receive this conflict protection.
+
+Data recovery options and their validation requirements are documented in the [data-provider evaluation](docs/data-provider-evaluation.md).

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import market, research, store, quality, changes, charting, quotes, scan_context, scheduler
+from . import market, research, store, quality, changes, charting, quotes, scan_context, scheduler, sessions
 from .jobs import RUN_LOCK, recover_interrupted_locked, router as jobs_router
 from .portfolio_transfer import router as portfolio_transfer_router
 from .backups import router as backups_router
@@ -80,14 +80,16 @@ class BacktestInput(BaseModel):
     end_date: date | None = None
 
 
-def enriched_positions():
+@store.snapshot_read
+def enriched_positions(expected_session=None):
+    expected_session = expected_session or sessions.latest_completed_session()
     scan = store.latest_scan()
     signals = {r["symbol"]: r for r in scan["result"]} if scan else {}
     datasets = {r["symbol"]: r for r in store.dataset_rows()}
     result = []
     for pos in store.positions():
         frame = store.history(pos["symbol"])
-        result.append({**pos, **quotes.valuation(frame, pos["shares"], pos["cost"]),
+        result.append({**pos, **quotes.valuation(frame, pos["shares"], pos["cost"], expected_session),
             "dataset": datasets.get(pos["symbol"]), "research": signals.get(pos["symbol"])})
     scale = max((p["market_value"] or 0 for p in result), default=0)
     scaled_total = sum((p["market_value"] or 0) / scale for p in result) if scale else 0
@@ -98,10 +100,13 @@ def enriched_positions():
 
 
 @app.get("/api/overview")
+@store.snapshot_read
 def overview():
-    items = enriched_positions()
+    expected_session = sessions.latest_completed_session()
+    items = enriched_positions(expected_session)
     holdings = [p for p in items if p["shares"] > 0]
     valued = [p for p in holdings if p["market_value"] is not None]
+    stale_count = sum(p["quote_status"] == "stale" for p in holdings)
     pnl_valued = [p for p in valued if p["pnl"] is not None and p["cost_value"] is not None]
     total = quotes.total(p["market_value"] for p in valued) if valued or not holdings else None
     pnl = quotes.total(p["pnl"] for p in pnl_valued) if pnl_valued or not holdings else None
@@ -127,8 +132,10 @@ def overview():
         "day_change_pct": quotes.finite(daily_change / previous_total * 100) if daily_change is not None and previous_total else None,
         "day_change_partial": day_partial, "day_change_covered_count": len(day_components),
         "holding_count": sum(p["shares"] > 0 for p in items), "watch_count": sum(p["shares"] == 0 for p in items),
-        "priced_count": len(valued), "dates": dates, "matched_count": len(matched),
-        "partial": len(valued) < len(holdings) or len(pnl_valued) < len(holdings) or total is None or pnl is None,
+        "priced_count": len(valued), "stale_count": stale_count,
+        "current_priced_count": sum(p["price_date"] == expected_session for p in valued),
+        "expected_session": expected_session, "dates": dates, "matched_count": len(matched),
+        "partial": bool(stale_count) or len(valued) < len(holdings) or len(pnl_valued) < len(holdings) or total is None or pnl is None,
         "mixed_dates": len(dates) > 1},
         "scan": scan_context.decorate(recent, items), "scan_dates": scans, "strategies": research.STRATEGIES,
         "market_scan": scan_context.decorate(store.latest_scan(scope="market"), market_members), "market_scan_dates": market_dates,
@@ -138,6 +145,7 @@ def overview():
 
 
 @app.get("/api/scans")
+@store.snapshot_read
 def scan_result(as_of: date | None = None, scope: Literal["portfolio", "market"] = "portfolio"):
     result = store.latest_scan(str(as_of) if as_of else None, scope=scope)
     if not result:
@@ -146,26 +154,40 @@ def scan_result(as_of: date | None = None, scope: Literal["portfolio", "market"]
 
 
 @app.get("/api/stocks/{symbol}")
+@store.snapshot_read
 def stock(symbol: str, scope: Literal["portfolio", "market"] = "portfolio", as_of: date | None = None):
+    expected_session = sessions.latest_completed_session()
+    if as_of:
+        if as_of > date.today():
+            raise HTTPException(422, "所選日期尚未到來，請選擇已完成交易日")
+        from datetime import timedelta
+        try:
+            candidates = sessions.expected_sessions((as_of - timedelta(days=14)).isoformat(), as_of.isoformat())
+            selected_session = candidates[-1]
+        except (ValueError, OverflowError, IndexError) as exc:
+            raise HTTPException(422, "所選日期超出可用交易日曆範圍") from exc
+        if selected_session > expected_session:
+            raise HTTPException(422, "所選交易日尚未收盤，請選擇已完成交易日")
+        expected_session = selected_session
     pos = next((p for p in enriched_positions() if p["symbol"] == symbol), None)
     member = next((p for p in store.universe("market") if p["symbol"] == symbol), None)
-    snapshot = store.latest_scan(str(as_of) if as_of else None, scope=scope)
+    snapshot = store.latest_scan(expected_session if as_of else None, scope=scope)
     row = next((r for r in snapshot["result"] if r["symbol"] == symbol), None) if snapshot else None
     if not pos and not member and not row:
         raise HTTPException(404, "找不到標的")
     raw = store.history(symbol)
     if as_of:
-        raw = raw[raw.date <= str(as_of)]
+        raw = raw[raw.date <= expected_session]
     if not pos:
         pos = {"symbol": symbol, "name": (member or row)["name"], "shares": 0, "cost": None,
                "snapshot_price": None, "sector": "市場候選", "source": "市場選股",
                "dataset": next((r for r in store.dataset_rows() if r["symbol"] == symbol), None)}
-    pos.update({"research": row, **quotes.valuation(raw, pos["shares"], pos["cost"]),
+    pos.update({"research": row, **quotes.valuation(raw, pos["shares"], pos["cost"], expected_session),
                 "valuation_basis": "目前股數與成本 × 所選日期收盤價，並非歷史持倉" if as_of else "目前持股與最新收盤價"})
     # Current allocation cannot be represented as a historical portfolio weight.
     if as_of:
         pos["weight"] = None
-    return {"position": pos, **charting.history(raw), "strategies": research.STRATEGIES}
+    return {"position": pos, **charting.history(raw[raw.date <= expected_session]), "strategies": research.STRATEGIES}
 
 
 @app.post("/api/watchlist/{symbol}")

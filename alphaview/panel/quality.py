@@ -3,6 +3,7 @@ from . import market, store
 from .sessions import expected_sessions, latest_completed_session
 
 
+@store.snapshot_read
 def report():
     expected = latest_completed_session()
     members = {p["symbol"]: p for p in [*store.universe("market"), *store.positions()]}

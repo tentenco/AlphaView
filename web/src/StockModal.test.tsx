@@ -114,3 +114,35 @@ describe('stock chart data integrity', () => {
     expect(screen.queryByText('符合條件')).toBeNull()
   })
 })
+
+describe('historical quote freshness', () => {
+  it('uses the response target session for a stale historical quote, not today', async () => {
+    const stock = position('NVDA')
+    Object.assign(stock, {
+      quote_status: 'stale',
+      quote_reason: '歷史目標交易日前缺少日線',
+      expected_session: '2026-08-28',
+      price_date: '2026-08-27',
+      price: 140,
+      change_pct: 8.76,
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            response(
+              url.startsWith('/api/notes/')
+                ? { symbol: 'NVDA', note: '', tags: [], updated_at: null, version: 0 }
+                : { position: stock, history: [], strategies: [] },
+            ),
+          ),
+        ),
+    )
+    render(<StockModal symbol="NVDA" asOf="2026-08-30" onClose={vi.fn()} />)
+    expect(await screen.findByText('報價過期')).toBeTruthy()
+    expect(screen.getByText(/應有交易日 2026-08-28/)).toBeTruthy()
+    expect(screen.queryByText(/8.76|漲跌資料不完整/)).toBeNull()
+  })
+})

@@ -69,3 +69,24 @@ describe('quote availability', () => {
     expect(screen.queryByText('100.0%')).toBeNull()
   })
 })
+
+describe('quote session freshness', () => {
+  it('retains stale price with its expected session but suppresses daily changes', () => {
+    const stock = position('NVDA')
+    Object.assign(stock, {
+      quote_status: 'stale',
+      quote_reason: '最後報價早於應有交易日',
+      expected_session: '2026-09-04',
+      price_date: '2026-09-03',
+      price: 150,
+      change: 9.87,
+      change_pct: 6.54,
+    })
+    render(<PortfolioTable positions={[stock]} onOpen={vi.fn()} />)
+    expect(screen.getByText('$150.00')).toBeTruthy()
+    expect(
+      screen.getByText(/報價過期：最後報價早於應有交易日（應有交易日 2026-09-04）/),
+    ).toBeTruthy()
+    expect(screen.queryByText(/6.54|9.87|漲跌資料不完整/)).toBeNull()
+  })
+})

@@ -503,3 +503,37 @@ describe('adaptive overview polling', () => {
     expect(fetcher).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('stale portfolio summary', () => {
+  it('distinguishes valued stale holdings from current coverage and hides daily gain', async () => {
+    const data = overview()
+    Object.assign(data.summary, {
+      partial: true,
+      stale_count: 1,
+      current_priced_count: 0,
+      expected_session: '2026-09-04',
+      day_change_partial: true,
+      day_change: 9.87,
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            response(
+              url === '/api/overview'
+                ? data
+                : { position: position(), history: [], strategies: [] },
+            ),
+          ),
+        ),
+    )
+    render(<App />)
+    await flush()
+    expect(screen.getByText(/有 1 檔持股報價過期/)).toBeTruthy()
+    expect(screen.getByText(/當期報價覆蓋 0 \/ 1 檔/)).toBeTruthy()
+    expect(screen.queryByText(/估值資料未完整，總市值與損益僅計入可用資料/)).toBeNull()
+    expect(screen.getByText('當日損益').parentElement?.querySelector('h2')?.textContent).toBe('—')
+  })
+})

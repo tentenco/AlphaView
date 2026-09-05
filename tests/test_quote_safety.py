@@ -4,13 +4,14 @@ import pytest
 
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
-from alphaview.panel import store
+from alphaview.panel import store, sessions
 from alphaview.panel.api import app
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("PANEL_DB_PATH", str(tmp_path / "quote-safety.db"))
+    monkeypatch.setattr(sessions, "latest_completed_session", lambda: "2024-01-04")
     with TestClient(app) as value:
         yield value
 
@@ -83,7 +84,8 @@ def test_no_holdings_is_zero_rather_than_unknown(client):
     assert not result["partial"] and not result["day_change_partial"]
 
 
-def test_missing_sessions_are_not_reported_as_a_single_daily_change(client):
+def test_missing_sessions_are_not_reported_as_a_single_daily_change(client, monkeypatch):
+    monkeypatch.setattr(sessions, "latest_completed_session", lambda: "2024-01-05")
     holding(closes=(100., 110.), dates=("2024-01-02", "2024-01-05"))
     result = client.get("/api/overview").json()
     assert result["positions"][0]["market_value"] == 1100
@@ -92,7 +94,8 @@ def test_missing_sessions_are_not_reported_as_a_single_daily_change(client):
     assert result["summary"]["day_change"] is None
 
 
-def test_mixed_price_dates_never_become_one_aggregate_daily_change(client):
+def test_mixed_price_dates_never_become_one_aggregate_daily_change(client, monkeypatch):
+    monkeypatch.setattr(sessions, "latest_completed_session", lambda: "2024-01-05")
     holding("ONE")
     holding("TWO", dates=("2024-01-03", "2024-01-04", "2024-01-05"))
     result = client.get("/api/overview").json()["summary"]

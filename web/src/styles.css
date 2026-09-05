@@ -2513,3 +2513,9 @@ td.number {
   max-width: 100%;
   white-space: normal;
 }
+
+.quote-warning {
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

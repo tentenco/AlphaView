@@ -42,7 +42,8 @@ export type Position = {
   pnl_pct: number | null
   weight: number | null
   price_date: string | null
-  quote_status?: 'ok' | 'partial' | 'unavailable'
+  quote_status?: 'ok' | 'partial' | 'stale' | 'unavailable'
+  expected_session?: string
   quote_reason?: string | null
   sparkline: { date: string; close: number | null }[]
   research: Research | null
@@ -104,6 +105,9 @@ export type Overview = {
     holding_count: number
     watch_count: number
     priced_count: number
+    current_priced_count?: number
+    stale_count?: number
+    expected_session?: string
     dates: string[]
     matched_count: number
     partial: boolean

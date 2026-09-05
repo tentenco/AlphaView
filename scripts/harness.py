@@ -91,6 +91,30 @@ def render(directory):
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
+    resilience_path = directory / "resilience-soak-30m.json"
+    if resilience_path.exists():
+        try:
+            resilience = json.loads(resilience_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            document += '<p>隔離測試紀錄暫時無法讀取，請稍後重新產生報告。</p>'
+        else:
+            labels = {
+                "concurrent_uncommitted_read": "交易尚未提交時的讀取一致性",
+                "committed_atomic_update": "完整交易發布",
+                "stale_csv_preview_conflict": "CSV 預覽過期衝突",
+                "optimistic_note_conflict": "研究筆記版本衝突",
+                "process_crash_rollback": "程序中斷後交易回復",
+                "scheduler_restart_once_per_session": "排程重啟後同交易日不重複",
+                "backup_during_uncommitted_transaction": "交易進行中的一致性備份",
+            }
+            failures = resilience.get("failures", [])
+            stage = {"running": "執行中", "completed": "已完成", "stopped": "已停止", "failed": "發現失敗"}.get(resilience.get("status"), resilience.get("status", "未知"))
+            document += f'<section><h2>隔離資料庫中斷與重啟測試</h2><p>{esc(stage)} · {esc(resilience.get("elapsed_seconds", 0))} 秒 · {esc(resilience.get("cycles", 0))} 輪。<br>{esc(resilience.get("passed", 0))} 項檢查通過，{len(failures)} 項失敗。<br>僅使用模擬資料，禁止網路連線；不修改實際持股與研究紀錄。</p><ul>'
+            document += ''.join(f'<li>{esc(labels.get(name, name))} · {esc(count)} 次通過</li>' for name, count in resilience.get("scenarios", {}).items())
+            document += '</ul>'
+            if failures:
+                document += '<p>失敗紀錄：' + '<br>'.join(esc(row.get("error", row.get("reason", row.get("scenario", "未分類")))) for row in failures) + '</p>'
+            document += '</section>'
     document += section('completed', '已完成的開發', '尚未整理完成項目；以下事件紀錄保留目前進度。')
     document += section('evidence', '驗證證據', '尚未附上驗證證據。')
     document += section('active', '斷點中的工作', '目前沒有進行中的項目。')

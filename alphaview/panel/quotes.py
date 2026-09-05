@@ -18,10 +18,15 @@ def total(values):
         return None
 
 
-def valuation(frame, shares, cost):
+def valuation(frame, shares, cost, expected_session=None):
+    from .sessions import latest_completed_session
+    expected_session = expected_session or latest_completed_session()
     last = frame.iloc[-1] if len(frame) else None
     previous = frame.iloc[-2] if len(frame) > 1 else None
     price = finite(last.close, positive=True) if last is not None else None
+    future = last is not None and str(last.date) > expected_session
+    if future:
+        price = None
     previous_price = finite(previous.close, positive=True) if previous is not None else None
     change = finite(price - previous_price) if price is not None and previous_price is not None else None
     change_pct = finite(change / previous_price * 100) if change is not None else None
@@ -29,6 +34,9 @@ def valuation(frame, shares, cost):
     status = "ok"
     if price is None:
         status, reason = "unavailable", "尚無收盤行情" if last is None else "最新收盤價無效；未改用較舊價格估值"
+    elif str(last.date) < expected_session:
+        status, reason = "stale", f"最新收盤行情為 {last.date}，尚未更新至 {expected_session}；當日漲跌暫不可用"
+        change = change_pct = None
     elif previous_price is None:
         status, reason = "partial", "前一筆收盤價缺少或無效，無法計算日漲跌"
     elif change is None or change_pct is None:
@@ -42,6 +50,8 @@ def valuation(frame, shares, cost):
         if len(sessions) != 2 or sessions != [str(previous.date), str(last.date)]:
             change = change_pct = None
             status, reason = "partial", "前後行情不是相鄰交易日，無法當作單日漲跌"
+    if future:
+        status, reason = "unavailable", f"日線日期 {last.date} 尚未通過收盤檢查；應有交易日 {expected_session}"
     shares = finite(shares)
     cost = finite(cost) if cost is not None else None
     value = finite(price * shares) if price is not None and shares is not None else None
@@ -53,6 +63,6 @@ def valuation(frame, shares, cost):
     return {"price": price, "price_date": str(last.date) if last is not None else None,
             "change": change, "change_pct": change_pct, "market_value": value,
             "cost_value": cost_value, "pnl": pnl, "pnl_pct": pnl_pct,
-            "quote_status": status, "quote_reason": reason,
-            "sparkline": [{"date": str(row.date), "close": finite(row.close, positive=True)}
+            "quote_status": status, "quote_reason": reason, "expected_session": expected_session,
+            "sparkline": [{"date": str(row.date), "close": finite(row.close, positive=True) if str(row.date) <= expected_session else None}
                           for row in frame.tail(30).itertuples()]}

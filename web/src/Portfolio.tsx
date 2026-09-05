@@ -95,16 +95,36 @@ export function PortfolioTable({
                   <strong>{money(p.price)}</strong>
                   <small>{p.price_date || '尚無報價'}</small>
                   {p.quote_status && p.quote_status !== 'ok' && (
-                    <small className="negative">
-                      {p.quote_status === 'unavailable' ? '報價不可用' : '漲跌資料不完整'}
+                    <small className="negative quote-warning">
+                      {p.quote_status === 'unavailable'
+                        ? '報價不可用'
+                        : p.quote_status === 'stale'
+                          ? '報價過期'
+                          : '漲跌資料不完整'}
                       {p.quote_reason && `：${p.quote_reason}`}
+                      {p.expected_session &&
+                        !p.quote_reason?.includes(p.expected_session) &&
+                        `（應有交易日 ${p.expected_session}）`}
                     </small>
                   )}
                 </td>
                 <td className="number">
-                  <Delta value={p.change_pct} />
+                  <Delta
+                    value={
+                      p.quote_status === 'stale' || p.quote_status === 'unavailable'
+                        ? null
+                        : p.change_pct
+                    }
+                  />
                   <small>
-                    <Delta value={p.change} percent={false} />
+                    <Delta
+                      value={
+                        p.quote_status === 'stale' || p.quote_status === 'unavailable'
+                          ? null
+                          : p.change
+                      }
+                      percent={false}
+                    />
                   </small>
                 </td>
                 <td>

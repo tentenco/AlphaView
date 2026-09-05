@@ -505,15 +505,31 @@ export function StockModal({
           {data.position.quote_status && data.position.quote_status !== 'ok' && (
             <div className="notice" role="status">
               <strong>
-                {data.position.quote_status === 'unavailable' ? '報價不可用' : '漲跌資料不完整'}
+                {data.position.quote_status === 'unavailable'
+                  ? '報價不可用'
+                  : data.position.quote_status === 'stale'
+                    ? '報價過期'
+                    : '漲跌資料不完整'}
               </strong>
-              <span>{data.position.quote_reason || '請至資料管理檢查日線資料。'}</span>
+              <span>
+                {data.position.quote_reason || '請至資料管理檢查日線資料。'}
+                {data.position.expected_session &&
+                  !data.position.quote_reason?.includes(data.position.expected_session) &&
+                  `（應有交易日 ${data.position.expected_session}）`}
+              </span>
             </div>
           )}
           <div className="stock-price">
             <div>
               <h2>{money(data.position.price)}</h2>
-              <Delta value={data.position.change_pct} />
+              <Delta
+                value={
+                  data.position.quote_status === 'stale' ||
+                  data.position.quote_status === 'unavailable'
+                    ? null
+                    : data.position.change_pct
+                }
+              />
               <p>{data.position.price_date} · USD · 收盤價</p>
             </div>
             <div className="segments">
