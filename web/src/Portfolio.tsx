@@ -65,7 +65,7 @@ export function PortfolioTable({
         </thead>
         <tbody>
           {sorted.map((p) => {
-            const signals = p.research?.signals || []
+            const signals = p.research_context?.available === false ? [] : p.research?.signals || []
             const matches = signals.filter((s) => s.matched)
             const unavailable =
               signals.find((s) => s.status === 'data_error') ||
@@ -162,7 +162,9 @@ export function PortfolioTable({
                   </>
                 )}
                 <td>
-                  {matches.length ? (
+                  {p.research_context?.available === false ? (
+                    <span className="badge insufficient">選股需重算</span>
+                  ) : matches.length ? (
                     <span className="badge match">
                       <i />
                       {matches.length} 項符合

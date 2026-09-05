@@ -95,6 +95,10 @@ Indicators use dividend-adjusted daily prices. Portfolio valuation uses unadjust
 
 Portfolio risk diagnostics describe **current holdings**, not historical portfolio performance. Valuation requires valid quotes for the latest completed XNYS session; incomplete coverage hides weights and concentration while labeling the available-value subtotal. Correlations use adjusted-close daily returns over 60 or 120 sessions, require at least 40 common observations per pair, and never bridge missing or invalid sessions. Stale series, zero-variance pairs, and insufficient samples remain unavailable. Pairwise date sets may differ; these results are not a covariance matrix, VaR, or a forecast.
 
+Each new scan stores the input revision captured with its price histories and membership. Publishing a scan does not change that revision; an input change during calculation prevents publication. Legacy snapshots without a revision remain available for review but require recalculation before their signals can be paired with current charts. A workspace-wide input counter is deliberately conservative: a change outside the selected scope can also require a rescan.
+
+Stock details show the source snapshot and withhold signals when its date or input revision does not match the viewed data. Signal-change reports compare strategy entries and exits only between snapshots with the same recorded input revision; unknown or different versions are marked unavailable, while membership additions and removals remain visible. Matching older snapshots can still be compared as historical records with an explicit warning. Open backtest reports are revalidated when the workspace data version changes.
+
 A historical screen recomputes the current candidate universe on earlier dates; it is not a point-in-time index membership dataset and has selection/survivorship bias. Relative strength is a pool-relative ranking, not a rank across every US stock. Expanding or changing the universe can change RPS even when a stock’s price history is unchanged; compare the recorded universe as well as the signal. Research signals are not automated orders.
 
 ## Architecture

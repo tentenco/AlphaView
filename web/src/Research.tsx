@@ -37,6 +37,21 @@ export function Strategies({ data }: { data: Overview }) {
   const request = useRef(0)
   const controller = useRef<AbortController | null>(null)
   const submitting = useRef(false)
+  const freshness = JSON.stringify([
+    data.revision,
+    data.datasets.find((item) => item.symbol === symbol),
+  ])
+  const validatedFreshness = useRef({ symbol, freshness })
+  const [revalidation, setRevalidation] = useState(0)
+  useEffect(() => {
+    if (symbol !== validatedFreshness.current.symbol) {
+      validatedFreshness.current = { symbol, freshness }
+      return
+    }
+    if (freshness === validatedFreshness.current.freshness || busy || submitting.current) return
+    validatedFreshness.current = { symbol, freshness }
+    setRevalidation((value) => value + 1)
+  }, [freshness, busy, symbol])
   useEffect(() => {
     if (!members.some((p) => p.symbol === symbol)) setSymbol(members[0]?.symbol || '')
   }, [symbol, members.map((p) => p.symbol).join(',')])
@@ -70,7 +85,7 @@ export function Strategies({ data }: { data: Overview }) {
       pending.abort()
       if (current === request.current) request.current++
     }
-  }, [symbol, strategy, initial, feeBps, startDate, endDate, optionsError])
+  }, [symbol, strategy, initial, feeBps, startDate, endDate, optionsError, revalidation])
   useEffect(
     () => () => {
       controller.current?.abort()
@@ -452,15 +467,20 @@ export function StockModal({
   symbol,
   scope = 'portfolio',
   asOf,
+  revision,
   onClose,
 }: {
   symbol: string
   scope?: Scope
   asOf?: string
+  revision?: string
   onClose: () => void
 }) {
   const [data, setData] = useState<StockDetail | null>(null)
   const [error, setError] = useState('')
+  const [refreshing, setRefreshing] = useState(true)
+  const [retry, setRetry] = useState(0)
+  const request = useRef(0)
   const [range, setRange] = useState(126)
   const [noteDirty, setNoteDirty] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -469,18 +489,30 @@ export function StockModal({
     else onClose()
   }
   useEffect(() => {
-    let active = true
-    api<StockDetail>(`/api/stocks/${symbol}?scope=${scope}${asOf ? `&as_of=${asOf}` : ''}`)
+    const pending = new AbortController()
+    const current = ++request.current
+    setRefreshing(true)
+    setError('')
+    api<StockDetail>(`/api/stocks/${symbol}?scope=${scope}${asOf ? `&as_of=${asOf}` : ''}`, {
+      signal: pending.signal,
+    })
       .then((r) => {
-        if (active) setData(r)
+        if (current !== request.current || pending.signal.aborted) return
+        if (r.position.symbol !== symbol)
+          throw new Error('個股資料與要求的標的不一致，請重新載入。')
+        setData(r)
       })
       .catch((e) => {
-        if (active) setError(e.message)
+        if (current === request.current && !pending.signal.aborted) setError(e.message)
+      })
+      .finally(() => {
+        if (current === request.current && !pending.signal.aborted) setRefreshing(false)
       })
     return () => {
-      active = false
+      pending.abort()
+      if (current === request.current) request.current++
     }
-  }, [symbol, scope, asOf])
+  }, [symbol, scope, asOf, revision, retry])
   return (
     <Modal title={data ? `${symbol} · ${data.position.name}` : symbol} onClose={close} wide>
       {confirmClose && (
@@ -494,12 +526,31 @@ export function StockModal({
           </button>
         </div>
       )}
-      {error ? (
+      <div className="actions">
+        <button
+          type="button"
+          className="button"
+          disabled={refreshing}
+          onClick={() => setRetry((value) => value + 1)}
+        >
+          重新載入個股資料
+        </button>
+      </div>
+      {refreshing && data && (
+        <p role="status" className="notice">
+          資料版本已變更或正在重新載入；暫時保留上次個股資料，研究筆記草稿不受影響。
+        </p>
+      )}
+      {error && (
         <div role="alert" className="error-message">
           {error}
+          {data && ' 更新失敗，目前仍顯示上次載入資料，可能已過期；請重新載入。'}
         </div>
-      ) : !data ? (
-        <div className="empty-state">載入日線與策略…</div>
+      )}
+      {!data ? (
+        <div className="empty-state">
+          {refreshing ? '載入日線與策略…' : '尚無可顯示的個股資料，請重新載入。'}
+        </div>
       ) : (
         <>
           {data.position.quote_status && data.position.quote_status !== 'ok' && (
@@ -517,6 +568,25 @@ export function StockModal({
                   !data.position.quote_reason?.includes(data.position.expected_session) &&
                   `（應有交易日 ${data.position.expected_session}）`}
               </span>
+            </div>
+          )}
+          {data.position.research_context && !data.position.research_context.available && (
+            <div className="notice" role="status">
+              <div>
+                <strong>選股需要重算</strong>
+                <p>
+                  {data.position.research_context.reason ||
+                    '目前沒有可驗證的選股結果，請重新執行此股票池的選股。'}
+                </p>
+                {data.position.research_context.snapshot_id != null && (
+                  <p>
+                    原快照 #{data.position.research_context.snapshot_id} ·{' '}
+                    {data.position.research_context.scope === 'market' ? '市場股票池' : '我的清單'}{' '}
+                    · 選股日期 {data.position.research_context.as_of || '—'} ·{' '}
+                    {dateTime(data.position.research_context.created_at)} 計算
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <div className="stock-price">
@@ -634,7 +704,12 @@ export function StockModal({
                     <h3>{s.name}</h3>
                     {signal && <Badge signal={signal} />}
                   </div>
-                  <p>{signal?.reason || '尚未掃描'}</p>
+                  <p>
+                    {signal?.reason ||
+                      (data.position.research_context?.available === false
+                        ? '選股結果需要重算後才會顯示。'
+                        : '尚未掃描')}
+                  </p>
                   <small>{s.rules.join(' · ')}</small>
                 </div>
               )

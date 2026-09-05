@@ -46,6 +46,15 @@ export type Position = {
   expected_session?: string
   quote_reason?: string | null
   sparkline: { date: string; close: number | null }[]
+  research_context?: {
+    snapshot_id: number | null
+    as_of: string | null
+    created_at: string | null
+    scope: Scope
+    input_status: 'current' | 'stale' | 'unknown'
+    available: boolean
+    reason: string | null
+  }
   research: Research | null
   dataset: Dataset | null
 }
@@ -59,6 +68,10 @@ export type Strategy = {
   origin: string
 }
 export type Scan = {
+  input_revision?: string | null
+  current_input_revision?: string
+  input_status?: 'current' | 'stale' | 'unknown'
+  input_stale?: boolean | null
   matches_current_universe?: boolean
   scan_member_count?: number
   current_member_count?: number
@@ -111,7 +124,8 @@ export type Overview = {
     stale_count?: number
     expected_session?: string
     dates: string[]
-    matched_count: number
+    matched_count: number | null
+    research_available?: boolean
     partial: boolean
     mixed_dates: boolean
   }

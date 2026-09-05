@@ -671,3 +671,29 @@ describe('revision-aware lightweight polling', () => {
     expect(fetcher.mock.calls.map((call) => call[0])).toEqual(['/api/overview', '/api/status'])
   })
 })
+
+it('does not present retained stale scan matches as current overview signals', async () => {
+  const data = overview()
+  data.summary.research_available = false
+  data.summary.matched_count = null
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          response(
+            url === '/api/overview' ? data : { position: position(), history: [], strategies: [] },
+          ),
+        ),
+      ),
+  )
+  render(<App />)
+  await flush()
+  expect(screen.getByText(/目前沒有與當期行情一致的選股快照/)).toBeTruthy()
+  expect(
+    screen.getByText('符合策略的標的').parentElement?.querySelector('h2')?.textContent,
+  ).toContain('—')
+  expect(screen.getAllByText('待重算')).toHaveLength(data.strategies.length)
+  expect(screen.queryByText('持續觀察')).toBeNull()
+})

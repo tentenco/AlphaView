@@ -145,6 +145,9 @@ describe('CSV export', () => {
       asOf: '2026-09-04',
       createdAt: '2026-09-05T00:00:00Z',
       sources: { S0: 'Official test source' },
+      snapshotId: 44,
+      inputRevision: 'fixture:7',
+      inputStatus: 'stale',
     })
     expect(csv.charCodeAt(0)).toBe(0xfeff)
     expect(csv.trim().split('\r\n')).toHaveLength(33)
@@ -152,5 +155,7 @@ describe('CSV export', () => {
     expect(csv).toContain('"\'=evil()"')
     expect(csv).toContain('"Official test source"')
     expect(csv).toContain('"2026-09-05T00:00:00Z"')
+    expect(csv).toContain('"snapshot_id","input_revision","input_status"')
+    expect(csv).toContain('"44","fixture:7","stale"')
   })
 })

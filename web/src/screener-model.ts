@@ -41,6 +41,9 @@ export function validateNumeric(filters: NumericFilters): string | null {
     if (filters[field].length > 30) return '每個數值條件最多 30 個字元，請縮短輸入後再儲存。'
     const raw = filters[field].trim()
     if (!raw) continue
+    // HTML valid floating-point syntax; Number() also accepts invisible hex/space forms.
+    if (!/^-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(filters[field]))
+      return '數值請使用十進位或科學記號，不可含空白、前置加號或其他格式。'
     const value = Number(raw)
     if (!Number.isFinite(value) || value < 0) return '數值條件須為零以上的有限數字。'
     if (['rsiMin', 'rsiMax', 'rpsMin'].includes(field) && value > 100)
@@ -161,7 +164,15 @@ export function csvCell(value: unknown): string {
 }
 export function screenerCsv(
   rows: Research[],
-  context: { scope: Scope; asOf: string; createdAt: string; sources: Record<string, string> },
+  context: {
+    scope: Scope
+    asOf: string
+    createdAt: string
+    sources: Record<string, string>
+    snapshotId?: number
+    inputRevision?: string | null
+    inputStatus?: string
+  },
 ): string {
   const header = [
     'symbol',
@@ -177,6 +188,9 @@ export function screenerCsv(
     'rps',
     'matched_strategies',
     'signal_details',
+    'snapshot_id',
+    'input_revision',
+    'input_status',
   ]
   const lines: unknown[][] = [
     header,
@@ -194,6 +208,9 @@ export function screenerCsv(
       r.indicators.rps,
       matchCount(r),
       r.signals.map((s) => `${s.strategy}: ${s.status} — ${s.reason}`).join(' | '),
+      context.snapshotId,
+      context.inputRevision,
+      context.inputStatus || 'unknown',
     ]),
   ]
   return '\uFEFF' + lines.map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n'

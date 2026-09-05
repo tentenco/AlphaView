@@ -119,7 +119,7 @@ def test_stock_detail_reuses_same_snapshot_for_position_and_chart(client,monkeyp
 def test_weekend_stock_uses_matching_prior_session_scan(client):
     row=dict(symbol='A',name='A',date='2024-01-05',signals=[])
     with store.connect() as db:
-        db.execute("INSERT INTO scans(created_at,as_of,universe,result,scope) VALUES ('test','2024-01-05','[\"A\"]',?,'portfolio')",(json.dumps([row]),))
+        db.execute("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES ('test','2024-01-05','[\"A\"]',?,'portfolio',?)",(json.dumps([row]),store.input_revision(db)))
     result=client.get('/api/stocks/A?as_of=2024-01-06').json()
     assert result['position']['research']==row
     assert client.get('/api/stocks/A?as_of=0001-01-01').status_code==422

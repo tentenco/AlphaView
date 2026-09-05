@@ -3,6 +3,7 @@ from contextlib import closing
 import hashlib
 import json
 import math
+import re
 import os
 from pathlib import Path
 import shutil
@@ -60,6 +61,8 @@ class NumericFilters(StrictModel):
         for field, raw in self.model_dump().items():
             if not raw.strip():
                 continue
+            if not re.fullmatch(r"-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", raw):
+                raise ValueError("篩選數字須使用 HTML 數值輸入支援的十進位或科學記號")
             try:
                 value = float(raw)
             except ValueError as exc:

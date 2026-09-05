@@ -28,6 +28,7 @@ import { WorkspaceBackup } from './WorkspaceBackup'
 import { ScheduleSettings } from './ScheduleSettings'
 import { StorageMaintenance } from './StorageMaintenance'
 import { ResumeUpdate } from './ResumeUpdate'
+import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { PriceChart } from './Charts'
 
 type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
@@ -85,7 +86,15 @@ function Home({
   const allocationComplete = holding.every(
     (position) => position.market_value != null && position.weight != null,
   )
-  const matches = data.scan?.result.filter((r) => r.signals.some((s) => s.matched)) || []
+  const researchAvailable =
+    s.research_available ??
+    (data.scan?.input_status
+      ? data.scan.input_status === 'current' &&
+        (!s.expected_session || data.scan.as_of === s.expected_session)
+      : !!data.scan)
+  const matches = researchAvailable
+    ? data.scan?.result.filter((r) => r.signals.some((s) => s.matched)) || []
+    : []
   return (
     <>
       <div className="page-title">
@@ -101,6 +110,7 @@ function Home({
           <span className="muted">美股日線</span>
         </div>
       </div>
+      <ScanProvenanceNotice status={data.scan?.input_status} busy={busy} onRecalculate={onRun} />
       {(s.partial || s.mixed_dates || s.day_change_partial || !!s.stale_count) && (
         <div className="notice">
           <WarningAlt size={16} />
@@ -164,12 +174,16 @@ function Home({
           <div>
             <p>符合策略的標的</p>
             <h2>
-              {s.matched_count}
+              {researchAvailable ? (s.matched_count ?? '—') : '—'}
               <span className="stat-denominator"> / {data.positions.length}</span>
             </h2>
             <small>
               {data.strategies.length} 個策略 ·{' '}
-              {data.scan ? dateTime(data.scan.created_at) : '尚未掃描'}
+              {!researchAvailable
+                ? '選股需重算'
+                : data.scan
+                  ? dateTime(data.scan.created_at)
+                  : '尚未掃描'}
             </small>
           </div>
         </div>
@@ -284,7 +298,7 @@ function Home({
         <div className="section-heading">
           <div>
             <h2>
-              持股策略觀察 <span className="count">{matches.length}</span>
+              持股策略觀察 <span className="count">{researchAvailable ? matches.length : '—'}</span>
             </h2>
             <p>{data.scan?.as_of || '尚未執行'} · 從你的清單中尋找符合條件的標的</p>
           </div>
@@ -293,12 +307,18 @@ function Home({
             {busy ? '執行中…' : '執行選股'}
           </button>
         </div>
+        {!researchAvailable && (
+          <p className="notice" role="status">
+            選股需重算：目前沒有與當期行情一致的選股快照，暫不列出符合策略的標的。已儲存快照仍可在每日選股檢閱。
+          </p>
+        )}
         <div className="signal-summary">
           {data.strategies.map((strategy, i) => {
-            const matched =
-              data.scan?.result.filter(
-                (r) => r.signals.find((s) => s.strategy === strategy.id)?.matched,
-              ) || []
+            const matched = researchAvailable
+              ? data.scan?.result.filter(
+                  (r) => r.signals.find((s) => s.strategy === strategy.id)?.matched,
+                ) || []
+              : []
             return (
               <button
                 type="button"
@@ -312,10 +332,14 @@ function Home({
                 <h3>{strategy.name}</h3>
                 <div className="signal-bottom">
                   <strong>
-                    {matched.length}
-                    <small> 檔符合</small>
+                    {researchAvailable ? matched.length : '—'}
+                    <small>{researchAvailable ? ' 檔符合' : ' 待重算'}</small>
                   </strong>
-                  <span>{matched.map((r) => r.symbol).join(' · ') || '持續觀察'}</span>
+                  <span>
+                    {!researchAvailable
+                      ? '選股需重算'
+                      : matched.map((r) => r.symbol).join(' · ') || '持續觀察'}
+                  </span>
                 </div>
               </button>
             )
@@ -1037,6 +1061,7 @@ export default function App() {
           symbol={opened}
           scope={stockScope}
           asOf={stockDate}
+          revision={data?.revision}
           onClose={() => setOpened(null)}
         />
       )}{' '}

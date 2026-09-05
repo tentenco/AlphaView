@@ -80,17 +80,37 @@ class BacktestInput(BaseModel):
     end_date: date | None = None
 
 
+def verified_research(snapshot, row, expected_session, scope):
+    reason = None
+    if snapshot is None:
+        reason = "所選股票池與日期尚無選股快照，請先執行選股。"
+    elif snapshot["as_of"] != expected_session or (row is not None and row.get("date") != expected_session):
+        reason = "已儲存訊號日期與目前檢視日期不同，請重新選股後再核對。"
+    elif snapshot["input_status"] == "unknown":
+        reason = "此舊快照沒有輸入版本紀錄，無法確認與目前資料一致；請重新選股。"
+    elif snapshot["input_status"] == "stale":
+        reason = "行情或股票池資料已變更，已隔離舊訊號；請重新選股。"
+    elif row is None:
+        reason = "此標的不在所選快照中，請重新選股。"
+    context = {"snapshot_id": snapshot["id"] if snapshot else None,
+               "as_of": snapshot["as_of"] if snapshot else None,
+               "created_at": snapshot["created_at"] if snapshot else None,
+               "scope": scope, "input_status": snapshot["input_status"] if snapshot else "unknown",
+               "available": reason is None, "reason": reason}
+    return {"research": row if reason is None else None, "research_context": context}
+
+
 @store.snapshot_read
 def enriched_positions(expected_session=None):
     expected_session = expected_session or sessions.latest_completed_session()
-    scan = store.latest_scan()
+    scan = scan_context.decorate(store.latest_scan())
     signals = {r["symbol"]: r for r in scan["result"]} if scan else {}
     datasets = {r["symbol"]: r for r in store.dataset_rows()}
     result = []
     for pos in store.positions():
         frame = store.history(pos["symbol"])
         result.append({**pos, **quotes.valuation(frame, pos["shares"], pos["cost"], expected_session),
-            "dataset": datasets.get(pos["symbol"]), "research": signals.get(pos["symbol"])})
+            "dataset": datasets.get(pos["symbol"]), **verified_research(scan, signals.get(pos["symbol"]), expected_session, "portfolio")})
     scale = max((p["market_value"] or 0 for p in result), default=0)
     scaled_total = sum((p["market_value"] or 0) / scale for p in result) if scale else 0
     allocation_complete = all(p["market_value"] is not None and p["price_date"] == expected_session
@@ -121,13 +141,14 @@ def overview():
     daily_change = quotes.total(day_components) if not day_partial else None
     day_partial = day_partial or daily_change is None
     previous_total = quotes.finite(total - daily_change) if total is not None and daily_change is not None else None
-    recent = store.latest_scan()
+    recent = scan_context.decorate(store.latest_scan())
     market_members = store.universe("market")
     with store.connect() as db:
         scans = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='portfolio' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         market_dates = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='market' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         jobs = store.public_jobs()
-    matched = [r for r in recent["result"] if any(s["matched"] for s in r["signals"])] if recent else []
+    research_available = bool(recent and recent["input_status"] == "current" and recent["as_of"] == expected_session)
+    matched = [p for p in items if p["research"] and any(s["matched"] for s in p["research"]["signals"])]
     return {"positions": items, "summary": {"market_value": total, "pnl": pnl,
         "pnl_pct": quotes.finite(pnl / cost * 100) if pnl is not None and cost else None,
         "day_change": daily_change,
@@ -136,7 +157,8 @@ def overview():
         "holding_count": sum(p["shares"] > 0 for p in items), "watch_count": sum(p["shares"] == 0 for p in items),
         "priced_count": len(valued), "stale_count": stale_count,
         "current_priced_count": sum(p["price_date"] == expected_session for p in valued),
-        "expected_session": expected_session, "dates": dates, "matched_count": len(matched),
+        "expected_session": expected_session, "dates": dates, "matched_count": len(matched) if research_available else None,
+        "research_available": research_available,
         "partial": bool(stale_count) or len(valued) < len(holdings) or len(pnl_valued) < len(holdings) or total is None or pnl is None,
         "mixed_dates": len(dates) > 1},
         "scan": scan_context.decorate(recent, items), "scan_dates": scans, "strategies": research.STRATEGIES,
@@ -182,7 +204,7 @@ def stock(symbol: str, scope: Literal["portfolio", "market"] = "portfolio", as_o
         expected_session = selected_session
     pos = next((p for p in enriched_positions() if p["symbol"] == symbol), None)
     member = next((p for p in store.universe("market") if p["symbol"] == symbol), None)
-    snapshot = store.latest_scan(expected_session if as_of else None, scope=scope)
+    snapshot = scan_context.decorate(store.latest_scan(expected_session if as_of else None, scope=scope))
     row = next((r for r in snapshot["result"] if r["symbol"] == symbol), None) if snapshot else None
     if not pos and not member and not row:
         raise HTTPException(404, "找不到標的")
@@ -193,7 +215,9 @@ def stock(symbol: str, scope: Literal["portfolio", "market"] = "portfolio", as_o
         pos = {"symbol": symbol, "name": (member or row)["name"], "shares": 0, "cost": None,
                "snapshot_price": None, "sector": "市場候選", "source": "市場選股",
                "dataset": next((r for r in store.dataset_rows() if r["symbol"] == symbol), None)}
-    pos.update({"research": row, **quotes.valuation(raw, pos["shares"], pos["cost"], expected_session),
+    verified = verified_research(snapshot, row, expected_session, scope)
+    pos.update({**verified,
+                **quotes.valuation(raw, pos["shares"], pos["cost"], expected_session),
                 "valuation_basis": "目前股數與成本 × 所選日期收盤價，並非歷史持倉" if as_of else "目前持股與最新收盤價"})
     # Current allocation cannot be represented as a historical portfolio weight.
     if as_of:

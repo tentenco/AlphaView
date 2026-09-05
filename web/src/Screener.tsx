@@ -1,3 +1,4 @@
+import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Play, Filter, Time, Search, Add, Download } from '@carbon/icons-react'
 import type { Overview, Scan, Scope } from './types'
@@ -224,6 +225,9 @@ export function Screener({
       scope,
       asOf: scan.as_of,
       createdAt: scan.created_at,
+      snapshotId: scan.id,
+      inputRevision: scan.input_revision,
+      inputStatus: scan.input_status,
       sources: Object.fromEntries(data.datasets.map((d) => [d.symbol, d.source])),
     })
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -369,6 +373,13 @@ export function Screener({
             </div>
           </div>
         )}
+      {!loading && scan?.scope === scope && scan.as_of === date && (
+        <ScanProvenanceNotice
+          status={scan.input_status}
+          busy={busy}
+          onRecalculate={() => onRun(scope, false)}
+        />
+      )}
       <div className="screen-stats">
         <div>
           <strong>{scan?.scan_member_count ?? scan?.universe.length ?? 0}</strong>

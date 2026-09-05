@@ -25,8 +25,8 @@ STOP 在開始前存在則不啟動 worker；執行途中出現則在下一次�
 ## 判讀結果
 
 - `valid: true`、`integrity: passed`：檔案內容、Manifest、SQLite 完整性及支援格式的交叉核對通過。
-- `compatibility: current`：符合目前已登錄的精確 schema，包括 revision 單例資料表與 21 個合法計數 trigger。
-- `compatibility: migration_required`：辨識為本輪早期九表版本（可信 commit `dd82732`，尚無排程／revision）或 revision 功能加入前的 v2 schema，需要另行遷移；本工具不執行遷移。
+- `compatibility: current`：符合目前已登錄的精確 schema，包括 revision 單例資料表與 36 個合法計數 trigger（包括輸入版本計數）。
+- `compatibility: migration_required`：辨識為本輪早期九表版本（可信 commit `dd82732`，尚無排程／revision）、revision 功能加入前的 v2 schema，或只有畫面 revision 而未記錄選股輸入版本的 schema，需要另行遷移；本工具不執行遷移。
 - `authenticity: not_authenticated`：檔案雜湊只能檢查與 Manifest 一致，不能證明誰建立備份。有人若同時修改內容和 Manifest，單靠 SHA-256 不構成來源認證。
 - `restored: false`：沒有修改工作區。摘要提供日期、程式／引擎版本、資料表筆數、瀏覽器篩選設定數，以及執行中作業／排程狀態，不輸出持股代碼、成本或筆記內容。早期備份若沒有排程資料表，`schedule_enabled_in_snapshot` 回傳 null（未知／不存在），不當成已停用。
 

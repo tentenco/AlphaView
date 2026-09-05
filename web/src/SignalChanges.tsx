@@ -17,6 +17,14 @@ export type ChangeEvent = {
   reason: string
 }
 export type ChangeReport = {
+  provenance?: {
+    comparison_status: 'comparable' | 'mismatch' | 'unknown' | 'not_applicable'
+    current_snapshot_revision: string | null
+    previous_snapshot_revision: string | null
+    current_input_revision: string
+    uses_current_inputs: boolean | null
+    reason: string
+  }
   scope: Scope
   status: 'ready' | 'first_snapshot' | 'no_snapshot'
   current_date: string | null
@@ -87,6 +95,11 @@ export function SignalChanges({
           )
             throw new Error('異動紀錄與所選範圍或日期不一致。')
           setReport(result)
+          if (
+            result.provenance &&
+            ['mismatch', 'unknown'].includes(result.provenance.comparison_status)
+          )
+            setFilter('all')
         }
       })
       .catch((err) => {
@@ -149,6 +162,13 @@ export function SignalChanges({
         </div>
       ) : (
         <>
+          {current.provenance &&
+            (current.provenance.comparison_status !== 'comparable' ||
+              current.provenance.uses_current_inputs === false) && (
+              <div className="notice" role="status">
+                {current.provenance.reason}
+              </div>
+            )}
           <p className="signal-changes-period">
             {current.previous_date} → {current.current_date} ·{' '}
             {scope === 'market' ? '市場候選股票池' : '我的持股與觀察清單'}

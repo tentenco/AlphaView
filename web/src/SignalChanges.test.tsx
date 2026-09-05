@@ -109,3 +109,55 @@ describe('signal change review', () => {
     expect(await screen.findByText(/所選日期尚無選股紀錄/)).toBeTruthy()
   })
 })
+
+describe('signal comparison provenance', () => {
+  it.each(['mismatch', 'unknown'] as const)(
+    'explains %s revisions and defaults to all membership/unavailable records',
+    async (status) => {
+      const reason = '資料版本無法對齊，策略進出暫不比較。'
+      const data = report({
+        provenance: {
+          comparison_status: status,
+          current_snapshot_revision: 'new',
+          previous_snapshot_revision: status === 'unknown' ? null : 'old',
+          current_input_revision: 'live',
+          uses_current_inputs: null,
+          reason,
+        },
+      })
+      data.events[0] = { ...data.events[0], kind: 'unavailable', reason }
+      data.counts.entered = 0
+      data.counts.unavailable = 1
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(data)))
+      render(<SignalChanges scope="market" onOpen={vi.fn()} />)
+      expect(await screen.findByRole('button', { name: 'OLD' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'NEW' })).toBeTruthy()
+      expect(screen.getByRole('combobox', { name: '異動類型' })).toHaveProperty('value', 'all')
+      expect(screen.getAllByText(reason).length).toBeGreaterThan(0)
+    },
+  )
+  it('preserves same-version historical transitions with an explicit current-data disclaimer', async () => {
+    const reason = '兩期使用相同的歷史資料版本；以下比較保留歷史快照，不代表目前日線的訊號。'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response(
+          report({
+            provenance: {
+              comparison_status: 'comparable',
+              current_snapshot_revision: 'old',
+              previous_snapshot_revision: 'old',
+              current_input_revision: 'live',
+              uses_current_inputs: false,
+              reason,
+            },
+          }),
+        ),
+      ),
+    )
+    render(<SignalChanges scope="market" onOpen={vi.fn()} />)
+    expect(await screen.findByText(reason)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'NEW' })).toBeTruthy()
+    expect(screen.getByRole('combobox', { name: '異動類型' })).toHaveProperty('value', 'changes')
+  })
+})

@@ -25,7 +25,8 @@ MAX_COMPRESSION_RATIO = 2000
 KNOWN_SCHEMAS = {
     # Trusted dd82732 store.py independently initialized in an isolated fixture (9 tables).
     "512db8da99053d46db57a91fe4ca88d432f151578cd73d622abe9694bfcc1e2e": "migration_required",
-    "93f7c92d0bc173ca2e96eac5cbd0cd0d26cd10997570d3dfda1e5f654e97b4c3": "current",
+    "93f7c92d0bc173ca2e96eac5cbd0cd0d26cd10997570d3dfda1e5f654e97b4c3": "migration_required",
+    "a161602153264d0616e2767c94ea3bdc605a99a785b31f78488200acb1f33264": "current",
     "f9ea8cd3a719e343144e88be36d112dcbaea30be8dbbe73eabf7a178c249a94d": "migration_required",
 }
 

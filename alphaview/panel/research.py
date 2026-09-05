@@ -170,9 +170,12 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
     """
     from .sessions import latest_completed_session
     expected_session = latest_completed_session()
-    previous = store.latest_scan(scope=scope)
-    positions = store.universe(scope)
-    frames = {p["symbol"]: indicators(store.history(p["symbol"])) for p in positions}
+    with store.read_snapshot():
+        captured_revision = store.input_revision()
+        previous = store.latest_scan(scope=scope)
+        positions = store.universe(scope)
+        raw_frames = {p["symbol"]: store.history(p["symbol"]) for p in positions}
+    frames = {symbol: indicators(raw) for symbol, raw in raw_frames.items()}
     observed_dates = {d for f in frames.values() for d in f.get("date", [])}
     valid_dates = {d for d in observed_dates if len(d) == 10
                    and pd.notna(pd.to_datetime(d, format="%Y-%m-%d", errors="coerce"))}
@@ -191,14 +194,16 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
         for row in results:
             row["name"] = names[row["symbol"]]
         batch.append((timestamp, as_of, universe_json,
-                      json.dumps(results, ensure_ascii=False, allow_nan=False), scope))
+                      json.dumps(results, ensure_ascii=False, allow_nan=False), scope, captured_revision))
     # Readers keep seeing the previous complete run until every date succeeds.
     # A calculation, serialization, or insertion failure publishes no partial run.
     with store.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         if check_cancel is not None:
             check_cancel()
-        db.executemany("INSERT INTO scans(created_at,as_of,universe,result,scope) VALUES (?,?,?,?,?)", batch)
+        if store.input_revision(db) != captured_revision:
+            raise ValueError("選股計算期間輸入資料已變更；未發布結果，請重新掃描")
+        db.executemany("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES (?,?,?,?,?,?)", batch)
     groups = {key: [] for key in ("current", "missing", "stale", "data_error", "unclosed")}
     short_history = []
     for row in results:

@@ -90,3 +90,22 @@ describe('quote session freshness', () => {
     expect(screen.queryByText(/6.54|9.87|漲跌資料不完整/)).toBeNull()
   })
 })
+
+it('marks stale research context for recomputation even if a stale match remains in a legacy payload', () => {
+  const stock = position('NVDA', [
+    { strategy: 'trend', status: 'match', matched: true, reason: 'Old match' },
+  ])
+  stock.research_context = {
+    snapshot_id: 1,
+    as_of: '2026-09-04',
+    created_at: '2026-09-05',
+    scope: 'portfolio',
+    input_status: 'stale',
+    available: false,
+    reason: 'Inputs changed',
+  }
+  render(<PortfolioTable positions={[stock]} onOpen={vi.fn()} />)
+  expect(screen.getByText('選股需重算')).toBeTruthy()
+  expect(screen.queryByText('1 項符合')).toBeNull()
+  expect(screen.queryByText('尚未掃描')).toBeNull()
+})

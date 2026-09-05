@@ -77,6 +77,7 @@ def test_known_legacy_schema_requires_migration_without_executing_it(archive, tm
         for name, in db.execute("SELECT name FROM sqlite_schema WHERE type='trigger'").fetchall():
             db.execute('DROP TRIGGER "' + name + '"')
         db.execute("DROP TABLE panel_revisions")
+        db.execute("ALTER TABLE scans DROP COLUMN input_revision")
     schema_manifest(data, database)
     result = preflight.check_backup(repack(tmp_path, data, rehash=True), temp_root=tmp_path)
     assert result["compatibility"] == "migration_required"
@@ -309,6 +310,7 @@ def test_early_nine_table_backup_requires_migration_and_schedule_unknown(archive
     with sqlite3.connect(database) as db:
         for name, in db.execute("SELECT name FROM sqlite_schema WHERE type='trigger'").fetchall():
             db.execute('DROP TRIGGER "' + name + '"')
+        db.execute("ALTER TABLE scans DROP COLUMN input_revision")
         for table in ("panel_revisions", "refresh_schedule", "schedule_attempts"):
             db.execute(f"DROP TABLE {table}")
     schema_manifest(data, database)

@@ -20,6 +20,7 @@ def _valid(signal, row, as_of):
             and signal["matched"] == (signal["status"] == "match"))
 
 
+@store.snapshot_read
 def report(scope="market", as_of=None):
     """Compare latest snapshots of distinct stored dates, isolated by scope.
 
@@ -31,13 +32,28 @@ def report(scope="market", as_of=None):
     if as_of is not None and (not isinstance(as_of, str) or date.fromisoformat(as_of).isoformat() != as_of):
         raise ValueError("日期格式須為 YYYY-MM-DD")
     with store.connect() as db:
-        db.execute("BEGIN")
         current = _snapshot(db.execute(
             "SELECT * FROM scans WHERE scope=? " + ("AND as_of=? " if as_of else "")
             + "ORDER BY as_of DESC,id DESC LIMIT 1", (scope, as_of) if as_of else (scope,)).fetchone())
         previous = _snapshot(db.execute(
             "SELECT * FROM scans WHERE scope=? AND as_of<? ORDER BY as_of DESC,id DESC LIMIT 1",
             (scope, current["as_of"])).fetchone()) if current else None
+    live_revision = store.input_revision()
+    current_revision = current.get("input_revision") if current else None
+    previous_revision = previous.get("input_revision") if previous else None
+    if not previous:
+        comparison, reason = "not_applicable", "尚無兩期快照可比較。"
+    elif not current_revision or not previous_revision:
+        comparison, reason = "unknown", "任一期未記錄資料版本，無法確認訊號變化是否來自資料修訂；策略進出暫不比較。"
+    elif current_revision != previous_revision:
+        comparison, reason = "mismatch", "兩期快照使用不同資料版本，訊號差異可能來自資料修訂或重算；策略進出暫不比較。"
+    else:
+        comparison = "comparable"
+        reason = "兩期使用相同且為目前的資料版本。" if current_revision == live_revision else "兩期使用相同的歷史資料版本；以下比較保留歷史快照，不代表目前日線的訊號。"
+    provenance = {"comparison_status": comparison, "current_snapshot_revision": current_revision,
+                  "previous_snapshot_revision": previous_revision, "current_input_revision": live_revision,
+                  "uses_current_inputs": current_revision == live_revision if comparison == "comparable" else None,
+                  "reason": reason}
     result = {"scope": scope, "status": "ready" if previous else "first_snapshot" if current else "no_snapshot",
               "current_date": current["as_of"] if current else None,
               "previous_date": previous["as_of"] if previous else None,
@@ -45,7 +61,7 @@ def report(scope="market", as_of=None):
               "previous_snapshot_id": previous["id"] if previous else None,
               "current_created_at": current["created_at"] if current else None,
               "previous_created_at": previous["created_at"] if previous else None,
-              "counts": {kind: 0 for kind in KINDS}, "events": [],
+              "provenance": provenance, "counts": {kind: 0 for kind in KINDS}, "events": [],
               "current_symbols": len(current["universe"]) if current else 0,
               "previous_symbols": len(previous["universe"]) if previous else 0}
     if not previous:
@@ -76,7 +92,9 @@ def report(scope="market", as_of=None):
             emit("unavailable", symbol, reason="兩期缺少可比較的策略紀錄。")
         for strategy in strategies:
             old, new = old_signals.get(strategy), new_signals.get(strategy)
-            if not (_valid(old, old_row, previous["as_of"]) and _valid(new, new_row, current["as_of"])):
+            if comparison != "comparable":
+                emit("unavailable", symbol, strategy, old, new, reason)
+            elif not (_valid(old, old_row, previous["as_of"]) and _valid(new, new_row, current["as_of"])):
                 emit("unavailable", symbol, strategy, old, new, "任一期訊號缺失、資料不足、過期或異常；無法判定策略進出。")
             elif new["matched"] and not old["matched"]:
                 emit("entered", symbol, strategy, old, new, "前期未符合，本期符合條件。")

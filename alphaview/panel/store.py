@@ -130,6 +130,8 @@ def init_db():
             scope TEXT NOT NULL, universe_limit INTEGER NOT NULL, claimed_at TEXT NOT NULL
         );
         """)
+        # All migrations after base CREATEs commit together and can safely restart.
+        db.execute("BEGIN IMMEDIATE")
         db.execute("INSERT OR IGNORE INTO refresh_schedule(id,updated_at) VALUES (1,?)", (now(),))
         for table in ("scans", "jobs"):
             if "scope" not in {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}:
@@ -145,6 +147,23 @@ def init_db():
             counter = "job_revision" if table == "jobs" else "data_revision"
             for operation in ("INSERT", "UPDATE", "DELETE"):
                 db.execute(f"CREATE TRIGGER IF NOT EXISTS revision_{table}_{operation.lower()} AFTER {operation} ON {table} BEGIN UPDATE panel_revisions SET {counter}={counter}+1 WHERE id=1; END")
+
+        if "inputs_revision" not in {row["name"] for row in db.execute("PRAGMA table_info(panel_revisions)")}:
+            db.execute("ALTER TABLE panel_revisions ADD COLUMN inputs_revision INTEGER NOT NULL DEFAULT 0")
+        if "input_revision" not in {row["name"] for row in db.execute("PRAGMA table_info(scans)")}:
+            db.execute("ALTER TABLE scans ADD COLUMN input_revision TEXT")
+        for table in ("positions", "bars", "datasets", "market_universe", "market_universe_metadata"):
+            for operation in ("INSERT", "UPDATE", "DELETE"):
+                db.execute(f"CREATE TRIGGER IF NOT EXISTS inputs_{table}_{operation.lower()} AFTER {operation} ON {table} BEGIN UPDATE panel_revisions SET inputs_revision=inputs_revision+1 WHERE id=1; END")
+
+
+def input_revision(db=None):
+    """A stable inputs-only token; scans and job progress do not change it."""
+    if db is None:
+        with connect() as connection:
+            return input_revision(connection)
+    row = db.execute("SELECT identity,inputs_revision FROM panel_revisions WHERE id=1").fetchone()
+    return f"{row['identity']}:{row['inputs_revision']}"
 
 
 def revision(expected_session):

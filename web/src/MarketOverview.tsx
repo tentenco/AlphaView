@@ -1,3 +1,4 @@
+import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { ArrowRight, Time } from '@carbon/icons-react'
 import type { Overview, Scope } from './types'
 import { dateTime, Delta, num } from './ui'
@@ -47,6 +48,7 @@ export function MarketOverview({
             <Time size={14} /> 選股日期 {scan.as_of} · {dateTime(scan.created_at)} 計算 · 快照 #
             {scan.id}
           </p>
+          <ScanProvenanceNotice status={scan.input_status} />
           {scan.matches_current_universe === false && (
             <div className="notice" role="status">
               這份快照使用原股票池 {scan.scan_member_count ?? model.coverage.total} 檔；目前股票池{' '}

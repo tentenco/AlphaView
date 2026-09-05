@@ -188,7 +188,10 @@ def test_market_scope_does_not_change_holdings_or_mix_scans(panel):
     detail = panel.get('/api/stocks/AAPL?scope=market').json()
     assert detail['position']['name'] == 'Apple'
     assert detail['position']['shares'] == 0
-    assert detail['position']['research']['symbol'] == 'AAPL'
+    assert detail['position']['research'] is None
+    assert not detail['position']['research_context']['available']
+    historical = panel.get(f"/api/stocks/AAPL?scope=market&as_of={m['as_of']}").json()
+    assert historical['position']['research']['symbol'] == 'AAPL'
     old_date = m['as_of']
     assert panel.get(f'/api/stocks/AAPL?scope=market&as_of={old_date}').status_code == 200
     repeated = research.scan(scope='market')
