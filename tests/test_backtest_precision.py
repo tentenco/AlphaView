@@ -68,7 +68,7 @@ def test_flat_round_trip_charges_executed_notional_and_preserves_tiny_amounts(in
         assert trade["entry_fee"] == trade["exit_fee"] == trade["net_pnl"] == 0
     if initial == 10000 and fee_bps == 100:
         assert result["final"] == pytest.approx(9801.980198019803)
-    assert result["engine_version"] == "alphaview-backtest-v4"
+    assert result["engine_version"] == "alphaview-backtest-v5"
 
 
 def test_tiny_open_position_preserves_entry_fee_and_budget_conservation():

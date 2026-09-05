@@ -4,6 +4,7 @@ import type { Position } from './types'
 import { api, Badge, Delta, Modal, money, num } from './ui'
 import { Sparkline } from './Charts'
 import { PortfolioImport } from './PortfolioImport'
+import { PortfolioRisk } from './PortfolioRisk'
 
 export function PortfolioTable({
   positions,
@@ -190,12 +191,14 @@ export function Portfolio({
   onEdit,
   onAdd,
   onImported,
+  riskRefreshKey,
 }: {
   positions: Position[]
   onOpen: (s: string) => void
   onEdit: (p: Position) => void
   onAdd: () => void
   onImported?: () => Promise<void>
+  riskRefreshKey?: string
 }) {
   const [importing, setImporting] = useState(false)
   const [filter, setFilter] = useState('all')
@@ -279,6 +282,7 @@ export function Portfolio({
         幣別 USD ·
         成本由使用者輸入，可隨時編輯。損益由顯示的平均成本計算，可能因四捨五入與原平台略有差異。
       </p>
+      <PortfolioRisk refreshKey={riskRefreshKey} onOpen={onOpen} />
     </>
   )
 }
@@ -314,6 +318,7 @@ export function PositionEditor({
                 shares: Number(shares),
                 cost: cost === '' ? null : Number(cost),
                 sector: position?.sector || '自訂清單',
+                expected_updated_at: position?.updated_at ?? null,
               }),
             })
             onSaved()

@@ -16,6 +16,8 @@ from . import market, research, store, quality, changes, charting, quotes, scan_
 from .jobs import RUN_LOCK, recover_interrupted_locked, router as jobs_router
 from .portfolio_transfer import router as portfolio_transfer_router
 from .backups import router as backups_router
+from .risk import router as risk_router
+from .storage_maintenance import router as storage_router
 
 
 @asynccontextmanager
@@ -39,6 +41,8 @@ app.include_router(jobs_router)
 app.include_router(portfolio_transfer_router)
 app.include_router(backups_router)
 app.include_router(scheduler.router)
+app.include_router(risk_router)
+app.include_router(storage_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 
@@ -58,6 +62,7 @@ class PositionInput(BaseModel):
     shares: float = Field(ge=0, le=1e9, allow_inf_nan=False)
     cost: float | None = Field(default=None, ge=0, le=1e9, allow_inf_nan=False)
     sector: str = Field(default="自訂清單", max_length=50)
+    expected_updated_at: str | None = Field(default=None, max_length=80)
 
     @model_validator(mode="after")
     def requires_cost(self):
@@ -190,7 +195,12 @@ def save_position(symbol: str, body: PositionInput):
         raise HTTPException(409, "資料作業進行中，完成後即可編輯持股")
     try:
         with store.connect() as db:
-            exists = db.execute("SELECT 1 FROM positions WHERE symbol=?", (symbol,)).fetchone()
+            db.execute("BEGIN IMMEDIATE")
+            exists = db.execute("SELECT updated_at FROM positions WHERE symbol=?", (symbol,)).fetchone()
+            if "expected_updated_at" in body.model_fields_set:
+                current_version = exists["updated_at"] if exists else None
+                if current_version != body.expected_updated_at:
+                    raise HTTPException(409, "此標的已在其他視窗或匯入作業中修改；請關閉編輯並重新開啟，核對最新資料後再儲存")
             if not exists and db.execute("SELECT COUNT(*) FROM positions").fetchone()[0] >= 100:
                 raise HTTPException(400, "本地清單上限為 100 檔")
             db.execute("""INSERT INTO positions(symbol,name,shares,cost,sector,source,updated_at)

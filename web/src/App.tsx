@@ -26,6 +26,7 @@ import { DataQuality } from './DataQuality'
 import { MarketOverview } from './MarketOverview'
 import { WorkspaceBackup } from './WorkspaceBackup'
 import { ScheduleSettings } from './ScheduleSettings'
+import { StorageMaintenance } from './StorageMaintenance'
 import { PriceChart } from './Charts'
 
 type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
@@ -402,6 +403,7 @@ function DataPage({
         refreshKey={data.jobs.map((job) => `${job.id}:${job.status}`).join(',')}
       />
       <WorkspaceBackup />
+      <StorageMaintenance />
       <DataQuality busy={busy} onRetry={onRetry} onOpen={onOpen} />
       <div className="section-heading">
         <h2>
@@ -920,6 +922,10 @@ export default function App() {
             {page === 'portfolio' && (
               <Portfolio
                 onImported={() => load()}
+                riskRefreshKey={JSON.stringify([
+                  data.positions.map((p) => [p.symbol, p.shares, p.name, p.price_date, p.price]),
+                  data.datasets.map((d) => [d.symbol, d.fetched_at, d.status]),
+                ])}
                 positions={data.positions}
                 onOpen={openStock}
                 onEdit={setEditor}

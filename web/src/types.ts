@@ -25,6 +25,7 @@ export type Dataset = {
   source: string
 }
 export type Position = {
+  updated_at?: string
   symbol: string
   name: string
   shares: number

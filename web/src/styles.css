@@ -2492,3 +2492,24 @@ td.number {
     font-size: 16px;
   }
 }
+
+.portfolio-risk .section-heading,
+.portfolio-risk .section-heading .actions {
+  flex-wrap: wrap;
+}
+
+.storage-maintenance .section-heading,
+.storage-maintenance .actions {
+  flex-wrap: wrap;
+}
+.storage-maintenance .storage-review {
+  display: block;
+}
+.storage-maintenance .storage-review p {
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.storage-maintenance .button {
+  max-width: 100%;
+  white-space: normal;
+}

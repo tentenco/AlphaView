@@ -25,6 +25,16 @@ STRATEGIES = [
 ]
 
 
+# Every comparison must use an observed finite metric. An overflow is not an
+# extremely strong return/volume confirmation, and must not enter peer ranks.
+SIGNAL_METRICS = {
+    "turtle": ["close", "open", "previous_close", "high20", "volume_ratio"],
+    "trend": ["close", "ma50", "ma200", "volume_ratio"],
+    "pullback": ["close", "previous_close", "ma200", "rsi"],
+    "rps": ["close", "high120", "return120"],
+}
+
+
 def finite(value):
     return round(float(value), 6) if pd.notna(value) and np.isfinite(value) else None
 
@@ -61,9 +71,12 @@ def indicators(frame):
     df["rsi"] = 100 - 100 / (1 + avg_gain / avg_loss.replace(0, np.nan))
     df.loc[(avg_loss == 0) & (avg_gain > 0), "rsi"] = 100
     df.loc[(avg_loss == 0) & (avg_gain == 0), "rsi"] = 50
+    df["previous_close"] = df.close.shift()
     df["turtle"] = (df.close > df.high20) & (df.close > df.open) & (df.close > df.close.shift()) & (df.volume_ratio >= 1)
     df["trend"] = (df.close > df.ma50) & (df.ma50 > df.ma200) & (df.volume_ratio >= 1.2)
     df["pullback"] = (df.close > df.ma200) & df.rsi.between(30, 45) & (df.close > df.close.shift())
+    for strategy in ("turtle", "trend", "pullback"):
+        df[strategy] &= np.isfinite(df[SIGNAL_METRICS[strategy]]).all(axis=1)
     return df
 
 
@@ -77,7 +90,7 @@ def evaluate(frames, as_of):
                              "valid": not bool(issues) and bool(len(frame)), "checked_rows": len(frame),
                              "invalid_count": len(issues), "issues": issues}
     returns = {s: f.iloc[-1].return120 for s, f in sliced.items()
-               if qualities[s]["valid"] and len(f) >= 121 and f.iloc[-1].date == as_of and pd.notna(f.iloc[-1].return120)}
+               if qualities[s]["valid"] and len(f) >= 121 and f.iloc[-1].date == as_of and np.isfinite(f.iloc[-1][SIGNAL_METRICS["rps"]].astype(float)).all()}
     ranks = pd.Series(returns, dtype=float).rank(pct=True) * 100
     result = []
     for symbol, frame in sliced.items():
@@ -107,6 +120,8 @@ def evaluate(frames, as_of):
                 status, matched, reason = "insufficient", False, f'需要 {st["period"]} 日；目前 {len(frame)} 日'
                 if st["id"] == "rps" and len(ranks) < 3:
                     reason += "；同日有效比較標的不足 3 檔"
+            elif not np.isfinite(last[SIGNAL_METRICS[st["id"]]].astype(float)).all():
+                status, matched, reason = "insufficient", False, "策略所需指標無法計算為有限數值，暫不產生訊號"
             else:
                 matched = bool(ranks.get(symbol, 0) >= 80 and last.close >= last.high120 * .9) if st["id"] == "rps" else bool(last[st["id"]])
                 status = "match" if matched else "watch"
@@ -185,7 +200,7 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
             "unchanged": previous is not None and previous["result"] == results}
 
 
-BACKTEST_ENGINE_VERSION = "alphaview-backtest-v4"
+BACKTEST_ENGINE_VERSION = "alphaview-backtest-v5"
 
 
 def _backtest_inputs(symbol, strategy, initial, fee_bps, start_date, end_date):
