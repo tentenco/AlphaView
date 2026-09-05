@@ -18,21 +18,29 @@ def no_network(*args, **kwargs):
     raise RuntimeError('Network access disabled in revision soak')
 
 
-def child(db_path, action, sender=None):
+def child(db_path, action, sender=None, stage=None):
+    stage.value = 1
     socket.create_connection = no_network
     socket.socket.connect = no_network
     os.environ['PANEL_DB_PATH'] = db_path
     from alphaview.panel import store
+    stage.value = 2
     if action == 'read':
+        stage.value = 3
         from alphaview.panel.api import polling_status
+        stage.value = 4
         sender.send(polling_status())
+        stage.value = 5
         sender.close()
         return
     if action == 'restart':
+        stage.value = 6
         store.init_db()
         return
+    stage.value = 7
     with store.connect() as db:
         db.execute("UPDATE positions SET name=name || 'x' WHERE symbol='SYNTH'")
+        stage.value = 8
         if action == 'crash':
             os._exit(23)  # Deliberately bypass connection cleanup before COMMIT.
 
@@ -40,13 +48,16 @@ def child(db_path, action, sender=None):
 def run_child(db_path, action):
     context = multiprocessing.get_context('spawn')
     receiver, sender = context.Pipe(duplex=False)
-    process = context.Process(target=child, args=(db_path, action, sender))
+    stage = context.Value("i", 0, lock=False)
+    process = context.Process(target=child, args=(db_path, action, sender, stage))
     process.start()
     process.join(10)
     if process.is_alive():
         process.kill()
         process.join()
-        raise AssertionError('child transaction timed out')
+        sender.close()
+        receiver.close()
+        raise AssertionError(f'child transaction timed out: action={action}, stage={stage.value}')
     assert process.exitcode == (23 if action == 'crash' else 0), 'unexpected child exit'
     sender.close()
     result = receiver.recv() if action == 'read' else None
@@ -101,10 +112,12 @@ def cycle(db_path):
             'status_latency_ms_mean': round(sum(timings) / len(timings), 3), 'invariants': 11}
 
 
-def run(directory, seconds, interval):
+def run(directory, seconds, interval, stop_directory=None):
     if seconds <= 0 or interval <= 0:
         raise ValueError('duration and interval must be positive')
-    state = json.loads((directory / 'state.json').read_text())
+    stop_directory = stop_directory or directory
+    state = json.loads((stop_directory / 'state.json').read_text())
+    directory.mkdir(parents=True, exist_ok=True)
     harness_deadline = datetime.fromisoformat(state['deadline'].replace('Z', '+00:00'))
     hard_deadline = datetime(2026, 9, 5, 3, 47, 25, tzinfo=timezone.utc)
     deadline = min(harness_deadline, hard_deadline)
@@ -126,7 +139,7 @@ def run(directory, seconds, interval):
         reason = 'duration'
         while time.monotonic() - started < seconds:
             remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
-            if (directory / 'STOP').exists() or remaining <= 60:
+            if (stop_directory / 'STOP').exists() or remaining <= 60:
                 reason = 'harness_stop_or_deadline'
                 break
             record = {'at': datetime.now(timezone.utc).isoformat(), 'cycle': summary['cycles']}
@@ -149,7 +162,7 @@ def run(directory, seconds, interval):
                 reason = 'invariant_failure'
                 break
             until = min(started + seconds, cycle_start + interval)
-            while time.monotonic() < until and not (directory / 'STOP').exists():
+            while time.monotonic() < until and not (stop_directory / 'STOP').exists():
                 time.sleep(min(0.5, until - time.monotonic()))
         summary.update(ended_at=datetime.now(timezone.utc).isoformat(), elapsed_seconds=round(time.monotonic() - started, 3), stop_reason=reason)
     summary_path.write_text(json.dumps(summary, indent=2) + '\n')
@@ -160,10 +173,11 @@ def run(directory, seconds, interval):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path, default=Path('artifacts/harness-2026-09-05'))
+    parser.add_argument('--stop-directory', type=Path)
     parser.add_argument('--seconds', type=float, default=2700)
     parser.add_argument('--interval', type=float, default=8)
     args = parser.parse_args()
-    summary = run(args.directory, args.seconds, args.interval)
+    summary = run(args.directory, args.seconds, args.interval, args.stop_directory)
     return 1 if summary['failures'] else 0
 
 

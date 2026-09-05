@@ -318,3 +318,20 @@ describe('preserved scan universe context', () => {
     expect(screen.queryByText('這份選股結果使用的股票池與目前不同。')).toBeNull()
   })
 })
+
+it('retries a failed saved scan read without launching a new market job', async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Temporary read failure' }), { status: 503 }),
+    )
+    .mockResolvedValueOnce(response(scan('market', '2026-09-04', 'DELL')))
+  vi.stubGlobal('fetch', fetcher)
+  const callbacks = props()
+  render(<Screener {...callbacks} />)
+  await screen.findByRole('alert')
+  await userEvent.click(screen.getByRole('button', { name: '重新讀取選股紀錄' }))
+  expect(await screen.findByRole('button', { name: 'DELL' })).toBeTruthy()
+  expect(callbacks.onRun).not.toHaveBeenCalled()
+  expect(fetcher.mock.calls.every((call) => call[0].startsWith('/api/scans?'))).toBe(true)
+})

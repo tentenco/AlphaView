@@ -91,12 +91,35 @@ def render(directory):
         if incomplete_soak:
             document += f'<p>{incomplete_soak} 筆未完整寫入的檢查紀錄暫不計入。</p>'
         document += '</section>'
-    revisions, incomplete_revisions = receipt_lines(directory / "polling-revision-soak.jsonl")
-    if revisions:
+    for folder, label in ((directory, "隔離版本同步長時間檢查（首次）"), (directory / "polling-revision-rerun", "隔離版本同步長時間檢查（附診斷重跑）")):
+        revisions, incomplete_revisions = receipt_lines(folder / "polling-revision-soak.jsonl")
+        if not revisions:
+            continue
         passed = sum(row.get("status") == "pass" for row in revisions)
         checks = sum(row.get("invariants", 0) for row in revisions if row.get("status") == "pass")
-        finished = (directory / "polling-revision-soak-summary.json").exists()
-        document += f'<section><h2>隔離版本同步長時間檢查</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(revisions)} 輪 · {checks} 項一致性檢查通過 · {len(revisions) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(revisions[-1]["at"]))}。<br>以合成資料驗證同時間戳修改、作業與資料版本分離、未提交讀取、回復、程序中斷及重啟；不連接實際資料庫。</p></section>'
+        summary_path = folder / "polling-revision-soak-summary.json"
+        finished = summary_path.exists()
+        document += f'<section><h2>{esc(label)}</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(revisions)} 輪 · {checks} 項一致性檢查通過 · {len(revisions) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(revisions[-1]["at"]))}。<br>以合成資料驗證同時間戳修改、作業與資料版本分離、未提交讀取、回復、程序中斷及重啟；不連接實際資料庫。</p>'
+        if finished:
+            summary = json.loads(summary_path.read_text())
+            document += f'<p>實際執行 {esc(summary.get("elapsed_seconds", "未知"))} 秒；停止原因：{esc(summary.get("stop_reason", "未知"))}。</p>'
+        if len(revisions) != passed:
+            document += '<ul>' + ''.join(f'<li>第 {esc(row.get("cycle", 0) + 1)} 輪 · {esc(row.get("error", "檢查失敗"))}</li>' for row in revisions if row.get("status") != "pass") + '</ul>'
+            document += '<p>失敗紀錄保留；後續重跑通過不能抹除這次失敗，也不能單憑逾時推定產品資料損壞。</p>'
+        if incomplete_revisions:
+            document += f'<p>{incomplete_revisions} 筆未完整寫入的紀錄暫不計入。</p>'
+        document += '</section>'
+    provenance, incomplete_provenance = receipt_lines(directory / "provenance-soak-60m.jsonl")
+    if provenance:
+        passed = sum(row.get("status") == "passed" for row in provenance)
+        checks = sum(row.get("checks", 0) for row in provenance if row.get("status") == "passed")
+        finished = (directory / "provenance-soak-60m.summary.json").exists()
+        document += f'<section><h2>選股輸入版本長時間檢查</h2><p>{"已停止並產生摘要" if finished else "執行中"} · {len(provenance)} 輪 · {checks} 項檢查通過 · {len(provenance) - passed} 輪失敗。<br>最後紀錄（臺灣時間）：{esc(taipei(provenance[-1]["at"]))}。<br>以合成日線驗證兩個股票池的版本、行情修改後的舊訊號隔離、重算恢復，以及計算期間跨程序寫入時禁止發布。</p>'
+        if len(provenance) != passed:
+            document += '<ul>' + ''.join(f'<li>第 {esc(row.get("cycle"))} 輪 · {esc(row.get("error_type", "檢查失敗"))}</li>' for row in provenance if row.get("status") != "passed") + '</ul>'
+        if incomplete_provenance:
+            document += f'<p>{incomplete_provenance} 筆未完整寫入的紀錄暫不計入。</p>'
+        document += '</section>'
     resilience_path = directory / "resilience-soak-30m.json"
     if resilience_path.exists():
         try:

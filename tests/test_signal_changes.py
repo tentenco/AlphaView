@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from alphaview.panel import changes, store
+from alphaview.panel import changes, scan_provenance, store
 
 
 @pytest.fixture(autouse=True)
@@ -11,7 +11,7 @@ def isolated(tmp_path, monkeypatch):
     store.init_db()
 
 
-def snapshot(as_of, rows, scope="market", universe=None, input_revision="same-test-inputs"):
+def snapshot(as_of, rows, scope="market", universe=None, input_revision="alphaview-scan-v1|00000000000000000000000000000000:1"):
     with store.connect() as db:
         cursor = db.execute("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES (?,?,?,?,?,?)",
                             (store.now(), as_of, json.dumps(universe if universe is not None else [r["symbol"] for r in rows]), json.dumps(rows), scope, input_revision))
@@ -85,7 +85,7 @@ def test_latest_uses_date_not_insert_order_and_reports_do_not_mutate():
     assert store.latest_scan(as_of="2026-09-04", scope="market") == before
 
 
-@pytest.mark.parametrize("old_revision,new_revision,status", [(None,None,"unknown"), (None,"known","unknown"), ("old","new","mismatch")])
+@pytest.mark.parametrize("old_revision,new_revision,status", [(None,None,"unknown"), (None,"known","unknown"), ("alphaview-scan-v1|00000000000000000000000000000000:1","alphaview-scan-v1|00000000000000000000000000000000:2","mismatch")])
 def test_provenance_blocks_strategy_transitions_but_preserves_membership(old_revision, new_revision, status):
     snapshot("2026-09-03", [row("KEEP","2026-09-03"), row("REMOVE","2026-09-03","match")], input_revision=old_revision)
     snapshot("2026-09-04", [row("KEEP","2026-09-04","match"), row("ADD","2026-09-04","match")], input_revision=new_revision)
@@ -96,8 +96,8 @@ def test_provenance_blocks_strategy_transitions_but_preserves_membership(old_rev
 
 
 def test_same_historical_revision_remains_comparable_but_is_marked_not_current():
-    snapshot("2026-09-03", [row("A","2026-09-03")], input_revision="historical")
-    snapshot("2026-09-04", [row("A","2026-09-04","match")], input_revision="historical")
+    snapshot("2026-09-03", [row("A","2026-09-03")], input_revision="alphaview-scan-v1|00000000000000000000000000000000:1")
+    snapshot("2026-09-04", [row("A","2026-09-04","match")], input_revision="alphaview-scan-v1|00000000000000000000000000000000:1")
     result = changes.report()
     assert result["counts"]["entered"] == 1
     assert result["provenance"]["comparison_status"] == "comparable"
@@ -105,7 +105,7 @@ def test_same_historical_revision_remains_comparable_but_is_marked_not_current()
 
 
 def test_live_revision_and_snapshots_are_read_in_one_snapshot(monkeypatch):
-    revision = store.input_revision()
+    revision = scan_provenance.current_token()
     snapshot("2026-09-03", [row("A","2026-09-03")], input_revision=revision)
     snapshot("2026-09-04", [row("A","2026-09-04","match")], input_revision=revision)
     original = store.input_revision

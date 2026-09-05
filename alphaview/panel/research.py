@@ -169,6 +169,8 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
     job status must stay outside that transaction.
     """
     from .sessions import latest_completed_session
+    from . import scan_provenance
+    captured_engine = scan_provenance.SCAN_ENGINE_VERSION
     expected_session = latest_completed_session()
     with store.read_snapshot():
         captured_revision = store.input_revision()
@@ -194,13 +196,15 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
         for row in results:
             row["name"] = names[row["symbol"]]
         batch.append((timestamp, as_of, universe_json,
-                      json.dumps(results, ensure_ascii=False, allow_nan=False), scope, captured_revision))
+                      json.dumps(results, ensure_ascii=False, allow_nan=False), scope, scan_provenance.token(captured_revision, captured_engine)))
     # Readers keep seeing the previous complete run until every date succeeds.
     # A calculation, serialization, or insertion failure publishes no partial run.
     with store.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         if check_cancel is not None:
             check_cancel()
+        if scan_provenance.SCAN_ENGINE_VERSION != captured_engine:
+            raise ValueError("選股計算期間引擎版本已變更；未發布結果，請重新掃描")
         if store.input_revision(db) != captured_revision:
             raise ValueError("選股計算期間輸入資料已變更；未發布結果，請重新掃描")
         db.executemany("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES (?,?,?,?,?,?)", batch)

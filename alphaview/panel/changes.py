@@ -2,7 +2,7 @@
 import json
 from datetime import date
 
-from . import store
+from . import scan_provenance, store
 
 KINDS = ("entered", "exited", "continued", "unavailable", "universe_added", "universe_removed")
 
@@ -38,19 +38,22 @@ def report(scope="market", as_of=None):
         previous = _snapshot(db.execute(
             "SELECT * FROM scans WHERE scope=? AND as_of<? ORDER BY as_of DESC,id DESC LIMIT 1",
             (scope, current["as_of"])).fetchone()) if current else None
-    live_revision = store.input_revision()
+    live_revision = scan_provenance.current_token()
     current_revision = current.get("input_revision") if current else None
     previous_revision = previous.get("input_revision") if previous else None
     if not previous:
         comparison, reason = "not_applicable", "尚無兩期快照可比較。"
-    elif not current_revision or not previous_revision:
-        comparison, reason = "unknown", "任一期未記錄資料版本，無法確認訊號變化是否來自資料修訂；策略進出暫不比較。"
+    elif scan_provenance.parse(current_revision) is None or scan_provenance.parse(previous_revision) is None:
+        comparison, reason = "unknown", "任一期未完整記錄選股引擎與資料版本，無法確認訊號變化是否來自資料修訂；策略進出暫不比較。"
     elif current_revision != previous_revision:
-        comparison, reason = "mismatch", "兩期快照使用不同資料版本，訊號差異可能來自資料修訂或重算；策略進出暫不比較。"
+        comparison, reason = "mismatch", "兩期快照使用不同選股引擎或資料版本，訊號差異可能來自資料修訂或重算；策略進出暫不比較。"
     else:
         comparison = "comparable"
-        reason = "兩期使用相同且為目前的資料版本。" if current_revision == live_revision else "兩期使用相同的歷史資料版本；以下比較保留歷史快照，不代表目前日線的訊號。"
-    provenance = {"comparison_status": comparison, "current_snapshot_revision": current_revision,
+        reason = "兩期使用相同且為目前的選股引擎與資料版本。" if current_revision == live_revision else "兩期使用相同的歷史選股引擎與資料版本；以下比較保留歷史快照，不代表目前日線的訊號。"
+    provenance = {"comparison_status": comparison,
+                  "current_scan_engine_version": scan_provenance.SCAN_ENGINE_VERSION,
+                  "current_snapshot_engine_version": (scan_provenance.parse(current_revision) or {}).get("engine_version"),
+                  "previous_snapshot_engine_version": (scan_provenance.parse(previous_revision) or {}).get("engine_version"), "current_snapshot_revision": current_revision,
                   "previous_snapshot_revision": previous_revision, "current_input_revision": live_revision,
                   "uses_current_inputs": current_revision == live_revision if comparison == "comparable" else None,
                   "reason": reason}

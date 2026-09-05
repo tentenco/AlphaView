@@ -1,5 +1,5 @@
 """Attach current membership context without changing stored scan snapshots."""
-from . import store
+from . import scan_provenance, store
 
 
 def decorate(snapshot, members=None):
@@ -9,10 +9,12 @@ def decorate(snapshot, members=None):
         members = store.universe(snapshot["scope"])
     scanned = set(snapshot["universe"])
     current = {member["symbol"] for member in members}
-    revision = store.input_revision()
+    revision = scan_provenance.current_token()
     saved = snapshot.get("input_revision")
-    status = "unknown" if not saved else "current" if saved == revision else "stale"
-    return {**snapshot, "current_input_revision": revision, "input_status": status,
+    parsed = scan_provenance.parse(saved)
+    status = "unknown" if parsed is None else "current" if saved == revision else "stale"
+    return {**snapshot, "scan_engine_version": parsed["engine_version"] if parsed else None,
+            "current_scan_engine_version": scan_provenance.SCAN_ENGINE_VERSION, "current_input_revision": revision, "input_status": status,
             "input_stale": None if status == "unknown" else status == "stale",
             "matches_current_universe": scanned == current,
             "scan_member_count": len(scanned), "current_member_count": len(current)}

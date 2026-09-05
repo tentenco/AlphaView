@@ -13,8 +13,8 @@ export function ScanProvenanceNotice({
       <div>
         <strong>
           {status === 'stale'
-            ? '資料已變更，這份選股需要重算。'
-            : '這份舊選股尚無資料版本紀錄，請重新計算。'}
+            ? '資料或選股規則已變更，這份選股需要重算。'
+            : '這份舊選股缺少完整版本紀錄，請重新計算。'}
         </strong>
         <p>下方保留原快照供檢閱，不能視為依目前行情重算的訊號。重新計算會使用目前已儲存的日線。</p>
         {onRecalculate ? (

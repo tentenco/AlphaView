@@ -697,3 +697,60 @@ it('does not present retained stale scan matches as current overview signals', a
   expect(screen.getAllByText('待重算')).toHaveLength(data.strategies.length)
   expect(screen.queryByText('持續觀察')).toBeNull()
 })
+
+it('refreshes the home chart when data changes without a download timestamp change', async () => {
+  let revision = 'first'
+  let chartReads = 0
+  const fetcher = vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/overview') return Promise.resolve(response({ ...overview(), revision }))
+    if (url === '/api/status')
+      return Promise.resolve(response({ revision, jobs_revision: '0', jobs: [] }))
+    if (url.startsWith('/api/stocks/')) {
+      chartReads++
+      return Promise.resolve(
+        response({
+          position: { ...position(), price: chartReads === 1 ? 111 : 222 },
+          history: [],
+          strategies: [],
+        }),
+      )
+    }
+    throw new Error(`Unexpected request ${url}`)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  render(<App />)
+  await flush()
+  expect(screen.getByText('$111.00')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '1M' }))
+  revision = 'second'
+  await act(async () => {
+    vi.advanceTimersByTime(30000)
+  })
+  await flush()
+  expect(chartReads).toBe(2)
+  expect(screen.getByText('$222.00')).toBeTruthy()
+  expect(screen.queryByText('$111.00')).toBeNull()
+  expect(screen.getByRole('button', { name: '1M' }).className).toContain('active')
+})
+
+it('retries a failed home chart read without starting a data job', async () => {
+  let failed = true
+  const fetcher = vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/overview') return Promise.resolve(response(overview()))
+    if (url.startsWith('/api/stocks/'))
+      return failed
+        ? Promise.reject(new Error('Chart temporarily unavailable'))
+        : Promise.resolve(response({ position: position(), history: [], strategies: [] }))
+    throw new Error(`Unexpected request ${url}`)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  render(<App />)
+  await flush()
+  expect(screen.getByRole('alert').textContent).toContain('Chart temporarily unavailable')
+  failed = false
+  fireEvent.click(screen.getByRole('button', { name: '重新讀取走勢' }))
+  await flush()
+  expect(screen.getByText('Chart ready')).toBeTruthy()
+  expect(screen.queryByText('Chart temporarily unavailable')).toBeNull()
+  expect(fetcher.mock.calls.some(([url]) => url === '/api/jobs')).toBe(false)
+})

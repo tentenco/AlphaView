@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import market, research, store, quality, changes, charting, quotes, scan_context, scheduler, sessions
+from . import market, research, store, quality, changes, charting, quotes, scan_context, scan_provenance, scheduler, sessions
 from .jobs import RUN_LOCK, recover_interrupted_locked, router as jobs_router
 from .portfolio_transfer import router as portfolio_transfer_router
 from .backups import router as backups_router
@@ -80,6 +80,11 @@ class BacktestInput(BaseModel):
     end_date: date | None = None
 
 
+def research_revision(expected_session):
+    revision = store.revision(expected_session)
+    return {**revision, "revision": f"{revision['revision']}:{scan_provenance.SCAN_ENGINE_VERSION}:{research.BACKTEST_ENGINE_VERSION}"}
+
+
 def verified_research(snapshot, row, expected_session, scope):
     reason = None
     if snapshot is None:
@@ -87,9 +92,9 @@ def verified_research(snapshot, row, expected_session, scope):
     elif snapshot["as_of"] != expected_session or (row is not None and row.get("date") != expected_session):
         reason = "已儲存訊號日期與目前檢視日期不同，請重新選股後再核對。"
     elif snapshot["input_status"] == "unknown":
-        reason = "此舊快照沒有輸入版本紀錄，無法確認與目前資料一致；請重新選股。"
+        reason = "此舊快照沒有完整選股引擎與輸入版本紀錄，無法確認與目前資料一致；請重新選股。"
     elif snapshot["input_status"] == "stale":
-        reason = "行情或股票池資料已變更，已隔離舊訊號；請重新選股。"
+        reason = "選股引擎、行情或股票池資料已變更，已隔離舊訊號；請重新選股。"
     elif row is None:
         reason = "此標的不在所選快照中，請重新選股。"
     context = {"snapshot_id": snapshot["id"] if snapshot else None,
@@ -166,14 +171,14 @@ def overview():
         "market_universe": market_members,
         "market_universe_meta": market.universe_metadata(),
         "datasets": store.dataset_rows(), "jobs": jobs, "server_time": store.now(),
-        **store.revision(expected_session)}
+        **research_revision(expected_session)}
 
 
 @app.get("/api/status")
 @store.snapshot_read
 def polling_status():
     expected_session = sessions.latest_completed_session()
-    return {**store.revision(expected_session), "jobs": store.public_jobs(),
+    return {**research_revision(expected_session), "jobs": store.public_jobs(),
             "expected_session": expected_session}
 
 

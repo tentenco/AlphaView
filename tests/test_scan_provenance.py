@@ -1,3 +1,4 @@
+from alphaview.panel import scan_provenance
 import json
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -24,7 +25,7 @@ def seed_scan(day="2024-01-04", *, legacy=False, scope="portfolio"):
     row = {"symbol": "TEST", "name": "Synthetic", "date": day, "bars": 3,
            "indicators": {"rsi": 80}, "signals": [{"strategy": "turtle", "status": "match", "matched": True, "reason": "synthetic"}]}
     with store.connect() as db:
-        cursor = db.execute("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES ('2024-01-04T22:00:00+00:00',?,'[\"TEST\"]',?,?,?)", (day, json.dumps([row]), scope, None if legacy else store.input_revision(db)))
+        cursor = db.execute("INSERT INTO scans(created_at,as_of,universe,result,scope,input_revision) VALUES ('2024-01-04T22:00:00+00:00',?,'[\"TEST\"]',?,?,?)", (day, json.dumps([row]), scope, None if legacy else scan_provenance.current_token(db)))
     return cursor.lastrowid
 
 

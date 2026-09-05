@@ -304,6 +304,16 @@ export function Strategies({ data }: { data: Overview }) {
             {error}
           </div>
         )}
+        {error && (
+          <button
+            type="button"
+            className="button"
+            disabled={loading || busy || !symbol || !!optionsError}
+            onClick={() => setRevalidation((value) => value + 1)}
+          >
+            重新讀取已儲存回測
+          </button>
+        )}
         {result ? (
           <>
             <div className="backtest-meta">
@@ -447,7 +457,7 @@ export function Strategies({ data }: { data: Overview }) {
             </details>
           </>
         ) : (
-          <div className="backtest-empty">
+          <div className="backtest-empty" role={busy || loading ? 'status' : undefined}>
             <div className="empty-chart-lines" />
             <h3>{busy ? '正在執行回測' : loading ? '載入已儲存回測…' : '讓數據檢驗策略'}</h3>
             <p>

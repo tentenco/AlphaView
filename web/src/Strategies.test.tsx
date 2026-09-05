@@ -210,3 +210,22 @@ describe('backtest parameters and diagnostics', () => {
     expect(screen.getByText('Sharpe 比率').parentElement?.textContent).toBe('Sharpe 比率—')
   })
 })
+
+it('retries saved backtest loading through GET without executing a strategy', async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'Temporary read failure' }), { status: 503 }),
+    )
+    .mockResolvedValueOnce(response(backtest('NVDA', 'turtle', 'Recovered cached result')))
+  vi.stubGlobal('fetch', fetcher)
+  render(<Strategies data={overview()} />)
+  await screen.findByRole('alert')
+  await userEvent.click(screen.getByRole('button', { name: '重新讀取已儲存回測' }))
+  expect(await screen.findByText(/Recovered cached result/)).toBeTruthy()
+  expect(
+    fetcher.mock.calls.every(
+      (call) => call[0].startsWith('/api/backtest/NVDA/turtle?') && call[1]?.method !== 'POST',
+    ),
+  ).toBe(true)
+})

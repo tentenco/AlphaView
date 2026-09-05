@@ -101,6 +101,7 @@ export function Screener({
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [readRetry, setReadRetry] = useState(0)
   const [adding, setAdding] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   useEffect(() => {
@@ -139,7 +140,7 @@ export function Screener({
     return () => {
       active = false
     }
-  }, [date, scope, latest?.id])
+  }, [date, scope, latest?.id, readRetry])
   useEffect(() => {
     setPage(0)
   }, [date, strategy, only, newOnly, query, scope, numeric, sort, direction])
@@ -617,8 +618,20 @@ export function Screener({
           {error}
         </div>
       )}
+      {error && (
+        <button
+          type="button"
+          className="button"
+          disabled={loading}
+          onClick={() => setReadRetry((value) => value + 1)}
+        >
+          重新讀取選股紀錄
+        </button>
+      )}
       {loading ? (
-        <div className="loading-line">正在載入選股紀錄…</div>
+        <div className="loading-line" role="status">
+          正在載入選股紀錄…
+        </div>
       ) : (
         <div className="table-scroll">
           <table>

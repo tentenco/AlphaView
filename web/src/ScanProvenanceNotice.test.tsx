@@ -4,9 +4,9 @@ import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 
 it('distinguishes unverifiable legacy snapshots from changed inputs and current results', () => {
   const view = render(<ScanProvenanceNotice status="unknown" />)
-  expect(screen.getByText('這份舊選股尚無資料版本紀錄，請重新計算。')).toBeTruthy()
+  expect(screen.getByText('這份舊選股缺少完整版本紀錄，請重新計算。')).toBeTruthy()
   view.rerender(<ScanProvenanceNotice status="stale" />)
-  expect(screen.getByText('資料已變更，這份選股需要重算。')).toBeTruthy()
+  expect(screen.getByText('資料或選股規則已變更，這份選股需要重算。')).toBeTruthy()
   view.rerender(<ScanProvenanceNotice status="current" />)
   expect(screen.queryByRole('status')).toBeNull()
 })

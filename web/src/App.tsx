@@ -58,16 +58,18 @@ function Home({
   const [chart, setChart] = useState<StockDetail | null>(null)
   const [range, setRange] = useState(63)
   const [chartError, setChartError] = useState('')
+  const [chartRetry, setChartRetry] = useState(0)
   useEffect(() => {
     if (!data.positions.some((position) => position.symbol === symbol))
       setSymbol(data.positions[0]?.symbol || '')
   }, [symbol, data.positions.map((position) => position.symbol).join(',')])
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setChart(null)
     setChartError('')
     if (!symbol) return
-    api<StockDetail>(`/api/stocks/${symbol}`)
+    api<StockDetail>(`/api/stocks/${symbol}`, { signal: controller.signal })
       .then((r) => {
         if (active) setChart(r)
       })
@@ -76,8 +78,14 @@ function Home({
       })
     return () => {
       active = false
+      controller.abort()
     }
-  }, [symbol, data.datasets.find((d) => d.symbol === symbol)?.fetched_at])
+  }, [
+    symbol,
+    data.revision,
+    data.datasets.find((d) => d.symbol === symbol)?.fetched_at,
+    chartRetry,
+  ])
   const s = data.summary
   const date = s.dates.at(-1)
   const holding = [...data.positions]
@@ -105,7 +113,7 @@ function Home({
         </div>
         <div className="date-label">
           <span className="status-dot" />
-          {date || '等待行情'}
+          {date || (s.holding_count === 0 ? '尚無持倉估值' : '等待行情')}
           {s.expected_session && <span className="muted">應有交易日 {s.expected_session}</span>}
           <span className="muted">美股日線</span>
         </div>
@@ -235,11 +243,20 @@ function Home({
           ) : chartError ? (
             <div className="error-message" role="alert">
               {chartError}
+              <button
+                type="button"
+                className="button"
+                onClick={() => setChartRetry((value) => value + 1)}
+              >
+                重新讀取走勢
+              </button>
             </div>
           ) : chart ? (
             <PriceChart data={chart.history.slice(-range)} average={false} />
           ) : (
-            <div className="chart-empty">載入走勢中…</div>
+            <div className="chart-empty" role="status">
+              載入走勢中…
+            </div>
           )}
           <div className="chart-footer">
             <span>
