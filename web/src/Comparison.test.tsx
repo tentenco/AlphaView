@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import axe from 'axe-core'
 import { describe, expect, it, vi } from 'vitest'
@@ -143,4 +143,55 @@ describe('candidate price comparison', () => {
     })
     expect(audit.violations.map((item) => item.id)).toEqual([])
   })
+})
+
+it('exports the displayed result after draft and revision changes without refetching', async () => {
+  const fetcher = vi.fn().mockResolvedValue(response(result()))
+  vi.stubGlobal('fetch', fetcher)
+  const data = { ...overview(), revision: 'one' }
+  const view = render(<Comparison data={data} onOpen={vi.fn()} />)
+  await userEvent.click(screen.getByRole('button', { name: '比較調整收盤價' }))
+  await screen.findByText(/共同起點 2026-03-16/)
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: '共同觀察期間' }), '60')
+  view.rerender(<Comparison data={{ ...data, revision: 'two' }} onOpen={vi.fn()} />)
+  const createObjectURL = vi.fn().mockReturnValue('blob:comparison-export')
+  const revokeObjectURL = vi.fn()
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+  const downloads: string[] = []
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    downloads.push(this.download)
+  })
+  const callbacks: (() => void)[] = []
+  const timeout = vi.spyOn(window, 'setTimeout').mockImplementation((callback) => {
+    callbacks.push(callback as () => void)
+    return 1
+  })
+  try {
+    fireEvent.click(screen.getByRole('button', { name: '匯出比較摘要 CSV' }))
+    fireEvent.click(screen.getByRole('button', { name: '匯出每日比較 CSV' }))
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(downloads).toEqual([
+      'AlphaView-comparison-summary-2026-09-04-120d.csv',
+      'AlphaView-comparison-daily-2026-09-04-120d.csv',
+    ])
+    const csv = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = reject
+      reader.readAsText(createObjectURL.mock.calls[0][0])
+    })
+    expect(csv).toContain(
+      '"2026-09-04","120","2026-03-16","2026-09-04","inputs:1","alphaview-comparison-v1","true","true"',
+    )
+    expect(csv).toContain('"NVDA"')
+    expect(csv).toContain('"DELL"')
+    expect(revokeObjectURL).not.toHaveBeenCalled()
+    callbacks.forEach((callback) => callback())
+    expect(revokeObjectURL).toHaveBeenCalledTimes(2)
+  } finally {
+    click.mockRestore()
+    timeout.mockRestore()
+  }
 })

@@ -70,15 +70,24 @@ def render(directory):
     def section(key, title, empty):
         values = state.get(key, [])
         content = "".join(f"<li>{entry(value)}</li>" for value in values)
-        return f'<section><h2>{esc(title)}</h2>' + (f'<ul>{content}</ul>' if content else f'<p>{esc(empty)}</p>') + '</section>'
+        body = f'<ul>{content}</ul>' if content else f'<p>{esc(empty)}</p>'
+        if content and key in {'completed', 'evidence', 'workflow'}:
+            body = f'<details><summary>展開全部 {len(values)} 項</summary>{body}</details>'
+        return f'<section id="{esc(key)}"><h2>{esc(title)}</h2>' + body + '</section>'
 
     backlog = state.get("next_tasks", [])
     items = "".join(f'<li><label class="review-task"><input type="checkbox"> {entry(task)}</label></li>' for task in backlog)
     document = '''<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AlphaView · Agent Harness Review</title><style>
 :root{font-family:ui-sans-serif,system-ui,sans-serif;color:#e8eceb;background:#101312;color-scheme:dark}*{box-sizing:border-box}body{max-width:1160px;margin:0 auto;padding:48px 28px 80px}header{border-bottom:1px solid #34403a;padding-bottom:28px}h1{font-size:clamp(32px,6vw,56px);letter-spacing:-.04em;margin:12px 0}h2{margin-top:42px}h3{font-size:18px;margin:8px 0}p{color:#b9c5bf;line-height:1.7;white-space:pre-wrap}.eyebrow,.meta{font-size:12px;letter-spacing:.06em;color:#8caf9f}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:28px 0}.stat,article{border:1px solid #34403a;border-radius:8px;padding:20px;background:#151b18}.stat strong{display:block;font-size:20px;margin-top:9px}article{margin:12px 0}.links{display:flex;gap:24px;flex-wrap:wrap}a{color:#78d5ad}ul{list-style:none;padding:0}li{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #34403a;line-height:1.6}input{accent-color:#008557}.review-task{display:flex;gap:12px;align-items:flex-start;cursor:pointer;width:100%}.review-task input{margin-top:6px;flex-shrink:0}li p{margin:6px 0}a{overflow-wrap:anywhere}footer{margin-top:50px;color:#8caf9f;font-size:13px}@media print{body{background:white;color:black}.stat,article{break-inside:avoid;background:white}p{color:#333}}
-</style><header><div class="eyebrow">ALPHAVIEW / DEVELOPMENT REVIEW</div><h1>Agent Harness 開發檢閱</h1><p>動態子代理協作、逐項修正與驗證。這份靜態報告僅記錄實際開發結果；未完成事項保留為下一輪任務。</p><div class="links"><a href="http://127.0.0.1:8876">開啟本機 AlphaView</a><a href="https://github.com/tentenco/AlphaView">GitHub Repo</a><a href="https://tentenai.com">Powered by Tentenai.com</a></div></header>'''
+summary{cursor:pointer;line-height:1.7;color:#b9c5bf}section{scroll-margin-top:20px}.review-nav{margin-top:20px}</style><header><div class="eyebrow">ALPHAVIEW / DEVELOPMENT REVIEW</div><h1>Agent Harness 開發檢閱</h1><p>動態子代理協作、逐項修正與驗證。這份靜態報告僅記錄實際開發結果；未完成事項保留為下一輪任務。</p><div class="links"><a href="http://127.0.0.1:8876">開啟本機 AlphaView</a><a href="https://github.com/tentenco/AlphaView">GitHub Repo</a><a href="https://tentenai.com">Powered by Tentenai.com</a></div><nav class="links review-nav" aria-label="報告導覽"><a href="#delivered">交付概覽</a><a href="#deferred">已知限制</a><a href="#review_steps">檢查步驟</a><a href="#interface-market-overview.png">介面畫面</a><a href="#next-tasks">下一輪任務</a></nav></header>'''
     status = {"running": "開發與驗證中", "deadline_reached": "已到時限，停止新任務", "complete": "已設斷點，等待檢閱"}.get(state["status"], state["status"])
     document += f'<div class="stats"><div class="stat">狀態<strong>{esc(status)}</strong></div><div class="stat">開始（臺灣時間）<strong>{esc(taipei(state["started_at"]))}</strong></div><div class="stat">截止（臺灣時間）<strong>{esc(taipei(state["deadline"]))}</strong></div><div class="stat">已記錄事件<strong>{len(events)}</strong></div></div>'
+    if state.get("stopped_at"):
+        stopped = datetime.fromisoformat(state["stopped_at"].replace("Z", "+00:00"))
+        started = datetime.fromisoformat(state["started_at"].replace("Z", "+00:00"))
+        minutes = (stopped - started).total_seconds() / 60
+        document += f'<p>實際斷點（臺灣時間）：{esc(taipei(state["stopped_at"]))} · 距開始 {minutes:.1f} 分鐘。時限後停止新增開發，只整理檢閱與交接。</p>'
+    document += section('delivered', '本輪交付概覽', '本輪仍在逐項驗證，以下保留開發紀錄。')
     if incomplete_events:
         document += f'<p>有 {incomplete_events} 筆尚未完整寫入的事件，未列入本次報告。</p>'
     soak, incomplete_soak = receipt_lines(directory / "soak.jsonl")
@@ -175,9 +184,9 @@ def render(directory):
         screenshot = directory / filename
         if screenshot.exists():
             encoded = base64.b64encode(screenshot.read_bytes()).decode("ascii")
-            document += f'<section><h2>介面檢閱</h2><p>{esc(caption)}</p><img style="display:block;width:100%;height:auto;border:1px solid #34403a;border-radius:8px" alt="{esc(caption)}" src="data:image/png;base64,{encoded}"></section>'
-    document += '<h2>開發與驗證紀錄</h2>' + (cards or '<p>正在進行第一輪工作。</p>')
-    document += '<h2>下一輪 Agent Harness · Review 清單</h2><p>勾選後可匯出下一輪任務，交給下一次 Agent Harness。這份 HTML 不會修改專案或啟動任務；重載前請先匯出。</p><ul>' + (items or '<li>下一輪待辦會在結束前整理。</li>') + '</ul>'
+            document += f'<section id="interface-{esc(filename)}"><h2>介面檢閱</h2><p>{esc(caption)}</p><img style="display:block;width:100%;height:auto;border:1px solid #34403a;border-radius:8px" alt="{esc(caption)}" src="data:image/png;base64,{encoded}"></section>'
+    document += f'<section id="timeline"><h2>開發與驗證紀錄</h2><details><summary>展開 {len(events)} 筆事件</summary>' + (cards or '<p>正在進行第一輪工作。</p>') + '</details></section>'
+    document += '<h2 id="next-tasks">下一輪 Agent Harness · Review 清單</h2><p>勾選後可匯出下一輪任務，交給下一次 Agent Harness。這份 HTML 不會修改專案或啟動任務；重載前請先匯出。</p><ul>' + (items or '<li>下一輪待辦會在結束前整理。</li>') + '</ul>'
     document += '''<div style="margin-top:24px"><label for="review-notes">檢閱備註</label><textarea id="review-notes" rows="4" maxlength="6000" style="display:block;width:100%;margin:10px 0 16px;padding:14px;background:#151b18;color:#e8eceb;border:1px solid #34403a;border-radius:8px;font:inherit" placeholder="補充下一輪想優先改善的操作或問題…"></textarea><button id="export-review" type="button" style="padding:12px 18px;border:1px solid #78d5ad;border-radius:6px;background:#173c2c;color:#e8eceb;font:inherit;cursor:pointer">匯出下一輪任務 JSON</button><p id="review-status" role="status"></p></div>
 <script>document.getElementById('export-review').addEventListener('click',function(){
 const tasks=Array.from(document.querySelectorAll('.review-task input:checked')).map(input=>input.closest('label').textContent.trim().replace(/\\s+/g,' '));

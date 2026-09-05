@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { Overview, Scope } from './types'
 import { api, money, num } from './ui'
 import './comparison.css'
+import { comparisonDailyCsv, comparisonSummaryCsv } from './comparison-export'
 const ComparisonChart = lazy(() => import('./ComparisonChart'))
 export type ComparisonResult = {
   as_of: string
@@ -57,6 +58,7 @@ export function Comparison({
   const [resultRevision, setResultRevision] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [exportMessage, setExportMessage] = useState('')
   const controller = useRef<AbortController | null>(null)
   const generation = useRef(0)
   const pending = useRef(false)
@@ -87,6 +89,26 @@ export function Comparison({
           : previous,
     )
   }
+  function exportResult(kind: 'summary' | 'daily') {
+    if (!result || loading) return
+    const context = {
+      workspaceChanged: resultRevision !== revision,
+      draftChanged: resultKey !== key,
+    }
+    const csv =
+      kind === 'summary'
+        ? comparisonSummaryCsv(result, context)
+        : comparisonDailyCsv(result, context)
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `AlphaView-comparison-${kind}-${result.as_of}-${result.window}d.csv`
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setExportMessage(
+      `已匯出${kind === 'summary' ? '比較摘要' : '每日比較值'}，使用下方已計算結果的期間與資料版本。`,
+    )
+  }
   async function compare() {
     if (invalid || pending.current) return
     pending.current = true
@@ -96,6 +118,7 @@ export function Comparison({
     controller.current = request
     setLoading(true)
     setError('')
+    setExportMessage('')
     try {
       const next = await api<ComparisonResult>(
         `/api/comparison?${new URLSearchParams({ symbols: selected.join(','), window: String(windowSize) })}`,
@@ -261,6 +284,29 @@ export function Comparison({
       {result && (
         <section className="daily-section" aria-labelledby="comparison-result-title">
           <h2 id="comparison-result-title">已計算的價格比較</h2>
+          <div className="actions">
+            <button
+              type="button"
+              className="button"
+              disabled={loading}
+              onClick={() => exportResult('summary')}
+            >
+              匯出比較摘要 CSV
+            </button>
+            <button
+              type="button"
+              className="button"
+              disabled={loading}
+              onClick={() => exportResult('daily')}
+            >
+              匯出每日比較 CSV
+            </button>
+          </div>
+          {exportMessage && (
+            <p role="status" className="footnote">
+              {exportMessage}
+            </p>
+          )}
           {(resultKey !== key || resultRevision !== revision) && (
             <p role="status" className="notice">
               {resultRevision !== revision
