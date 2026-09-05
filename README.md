@@ -16,9 +16,16 @@ AlphaView brings market screening, transparent technical signals, and historical
 - **Review historical results.** Browse the latest 60 screening dates with separate market and personal-watchlist scopes.
 - **Track your own portfolio.** Manage quantities and average costs, monitor allocation and unrealized P&L, and export positions to CSV. Preview a local CSV import before atomically merging additions and updates; positions omitted from the file are kept.
 - **Test a hypothesis.** Run three long-only, single-stock strategies using prior-close signals and next-open execution with configurable capital, fees and dates, transparent diagnostics, and explicit transaction costs.
+- **Refresh after the close.** Opt into a local end-of-day schedule for your watchlist or a 250/500/1,000-stock market pool; monitor its last attempt from the data page.
 - **Inspect the data.** See quote dates, calendar-aware missing sessions, malformed OHLC, provider failures, and job progress. Retry selected symbols or cancel a job. Failed downloads preserve previously stored data; corrupt histories produce no research signals. Missing or invalid chart observations remain gaps, and incomplete daily P&L is shown as unavailable with coverage counts.
 
 The interface is in Traditional Chinese and uses a restrained dark design, keyboard search, responsive tables, and detailed stock views.
+
+## Local end-of-day schedule
+
+Scheduling is **off by default**. In the data page, choose a scope and market-pool limit, enable the schedule, and save. The local server must remain running and the computer awake; this is not a cloud service. The scheduler checks approximately every 60 seconds and uses the latest XNYS session whose official close was at least 15 minutes ago, including holidays and early closes.
+
+There is one automatic attempt per eligible session for the workspace, including failed, partially completed, cancelled, or interrupted attempts. Waking or restarting the server catches up only the latest eligible session; it does not replay every missed date. Retry failed symbols or refresh manually when needed. Disabling the schedule prevents future launches and does not cancel an active job; use the job’s cancel control separately. A busy workspace defers an unclaimed attempt until a later check. Changing the scope does not grant another automatic attempt for an already attempted session.
 
 ## Quick start
 
@@ -76,7 +83,7 @@ Duplicate symbols or any invalid row block the entire import. Exported quote/com
 | RSI pullback | Close above MA200, Wilder RSI(14) between 30 and 45, and an up day |
 | Relative strength | Top quintile of 120-day returns within the selected same-date universe, near its 120-day high |
 
-Indicators use dividend-adjusted daily prices. Portfolio valuation uses unadjusted daily closes and your entered holdings. Backtests use next-open execution, an initial $10,000, and a default 0.1% cost per side (configurable from 0 to 100 basis points). The comparison is buy-and-hold **of the same stock** over the same period, without benchmark fees. Open positions are marked to the final close. CAGR, daily-return volatility, zero-risk-free-rate Sharpe, win rate, profit factor, and exposure include sample warnings; undefined statistics remain blank. Saved results are labeled stale when their input fingerprint or engine version changes.
+Indicators use dividend-adjusted daily prices. Portfolio valuation uses unadjusted daily closes and your entered holdings. Backtests use next-open execution, an initial $10,000, and a default 0.1% cost per side (configurable from 0 to 100 basis points). Cost applies symmetrically to executed notional: entry notional is available cash divided by (1 + cost rate), and exit cost is gross proceeds multiplied by the rate. This combines fees and slippage into a cost estimate without separately adjusting execution prices. Transaction amounts retain full precision; the UI formats them for display. The comparison is buy-and-hold **of the same stock** over the same period, without benchmark fees. Open positions are marked to the final close. CAGR, daily-return volatility, zero-risk-free-rate Sharpe, win rate, profit factor, and exposure include sample warnings; undefined statistics remain blank. Saved results are labeled stale when their input fingerprint or engine version changes.
 
 A historical screen recomputes the current candidate universe on earlier dates; it is not a point-in-time index membership dataset and has selection/survivorship bias. Relative strength is a pool-relative ranking, not a rank across every US stock. Expanding or changing the universe can change RPS even when a stock’s price history is unchanged; compare the recorded universe as well as the signal. Research signals are not automated orders.
 

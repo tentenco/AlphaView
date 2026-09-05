@@ -185,7 +185,7 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
             "unchanged": previous is not None and previous["result"] == results}
 
 
-BACKTEST_ENGINE_VERSION = "alphaview-backtest-v3"
+BACKTEST_ENGINE_VERSION = "alphaview-backtest-v4"
 
 
 def _backtest_inputs(symbol, strategy, initial, fee_bps, start_date, end_date):
@@ -280,14 +280,16 @@ def backtest(symbol, strategy, initial=10000, fee_bps=10, start_date=None, end_d
             closed_pnls.append(net_pnl)
             trades.append({"entry_date": entry["date"], "exit_date": bar.date,
                            "return_pct": round((cash / entry["capital"] - 1) * 100, 2),
-                           "entry_price": entry["price"], "exit_price": finite(bar.open),
-                           "entry_fee": round(entry["fee"], 6), "exit_fee": round(exit_fee, 6),
-                           "net_pnl": round(net_pnl, 6),
+                           "entry_price": entry["price"], "exit_price": float(bar.open),
+                           "entry_fee": float(entry["fee"]), "exit_fee": float(exit_fee),
+                           "net_pnl": float(net_pnl),
                            "holding_days": (date.fromisoformat(bar.date) - date.fromisoformat(entry["date"])).days})
             units, entry = 0, None
         elif not units and bool(prior[strategy]):
-            entry = {"date": bar.date, "capital": cash, "price": finite(bar.open), "fee": cash * fee}
-            units, cash = cash * (1 - fee) / bar.open, 0
+            # Reserve cost on executed notional while conserving the entire budget.
+            notional = cash / (1 + fee)
+            entry = {"date": bar.date, "capital": cash, "price": float(bar.open), "fee": float(cash - notional)}
+            units, cash = notional / bar.open, 0
             entry["units"] = float(units)
         value = cash + units * bar.close
         benchmark = benchmark_units * bar.close
@@ -319,8 +321,6 @@ def backtest(symbol, strategy, initial=10000, fee_bps=10, start_date=None, end_d
         warnings.append("年化報酬超出有效數值範圍，未顯示 CAGR。")
     if start_date and start_date < df.iloc[warmup].date:
         warnings.append(f"指定起日缺乏足夠暖機資料，實際從 {df.iloc[start].date} 開始回測。")
-    if entry:
-        entry["fee"] = round(entry["fee"], 6)
     return {"symbol": symbol, "strategy": strategy, "start": df.iloc[start].date, "end": df.iloc[-1].date,
             "initial": initial, "final": curve[-1]["value"], "return_pct": round((curve[-1]["value"] / initial - 1) * 100, 2),
             "benchmark_pct": round((curve[-1]["benchmark"] / initial - 1) * 100, 2),
@@ -335,7 +335,7 @@ def backtest(symbol, strategy, initial=10000, fee_bps=10, start_date=None, end_d
             "engine_version": BACKTEST_ENGINE_VERSION,
             "input_fingerprint": _backtest_fingerprint(symbol, strategy, raw, parameters),
             "parameters": parameters, "benchmark_symbol": symbol,
-            "method": f"前一日收盤確認訊號，次日開盤成交；單一標的、全額投入、僅做多；每次買賣扣 {fee_bps:g} bps（{fee_bps / 100:g}%）費用與滑價。"
+            "method": f"前一日收盤確認訊號，次日開盤成交；單一標的、全額投入、僅做多；每次買賣按成交金額扣 {fee_bps:g} bps（{fee_bps / 100:g}%）成本；買入成交金額＝可用資金／（1＋成本率）。費用與滑價合併估計，不另調整成交價格。"
                       "使用含股息調整日線；未平倉按末日收盤評價。基準為同一標的、相同起日開盤買入持有（未扣費），並非市場指數。"
                       "CAGR 以首末交易日期間的日曆天數／365.25 年化；波動率與 Sharpe 使用每日淨值報酬、252 日年化、樣本標準差、零無風險利率，包含首日開盤至收盤報酬。"
                       "曝險率為收盤仍持有部位的交易日比例；勝率、獲利因子與平均持有天數僅計已平倉交易。回測資金與持股成本分開計算。"}

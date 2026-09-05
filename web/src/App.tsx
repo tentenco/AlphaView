@@ -25,6 +25,7 @@ import type { UniverseLimit } from './Screener'
 import { DataQuality } from './DataQuality'
 import { MarketOverview } from './MarketOverview'
 import { WorkspaceBackup } from './WorkspaceBackup'
+import { ScheduleSettings } from './ScheduleSettings'
 import { PriceChart } from './Charts'
 
 type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'data'
@@ -380,12 +381,26 @@ function DataPage({
             <small>保留最近 60 個交易日的檢視</small>
           </div>
           <div>
-            <p>自動排程</p>
-            <h2 className="text-medium">手動更新</h2>
-            <small>收盤後可按更新行情重新掃描</small>
+            <p>行情更新方式</p>
+            <h2 className="text-medium">手動／排程</h2>
+            <small>可在下方設定收盤後自動更新</small>
           </div>
         </div>
       </div>
+      <ScheduleSettings
+        defaultUniverseLimit={
+          Math.max(data.market_universe.length, data.market_universe_meta?.requested_limit || 0) >
+          500
+            ? 1000
+            : Math.max(
+                  data.market_universe.length,
+                  data.market_universe_meta?.requested_limit || 0,
+                ) > 250
+              ? 500
+              : 250
+        }
+        refreshKey={data.jobs.map((job) => `${job.id}:${job.status}`).join(',')}
+      />
       <WorkspaceBackup />
       <DataQuality busy={busy} onRetry={onRetry} onOpen={onOpen} />
       <div className="section-heading">

@@ -38,6 +38,7 @@ const STRATEGIES = ['all', 'turtle', 'trend', 'pullback', 'rps']
 
 export function validateNumeric(filters: NumericFilters): string | null {
   for (const field of NUMERIC_FIELDS) {
+    if (filters[field].length > 30) return '每個數值條件最多 30 個字元，請縮短輸入後再儲存。'
     const raw = filters[field].trim()
     if (!raw) continue
     const value = Number(raw)
@@ -111,45 +112,41 @@ export function filterRows(
       )
     })
 }
+export function validatePreset(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return '篩選設定格式不正確。'
+  const preset = value as Partial<Preset>
+  if (preset.version !== 1) return '不支援此篩選設定版本。'
+  if (typeof preset.name !== 'string' || !preset.name.trim()) return '請先輸入篩選設定名稱。'
+  if (preset.name.length > 60) return '篩選設定名稱最多 60 個字元。'
+  const settings = preset.settings
+  if (
+    !settings ||
+    !['market', 'portfolio'].includes(settings.scope) ||
+    !STRATEGIES.includes(settings.strategy) ||
+    typeof settings.only !== 'boolean' ||
+    typeof settings.newOnly !== 'boolean' ||
+    typeof settings.query !== 'string' ||
+    !SORT_KEYS.includes(settings.sort) ||
+    !['asc', 'desc'].includes(settings.direction)
+  )
+    return '篩選設定欄位格式不正確。'
+  if (settings.query.length > 200) return '搜尋文字最多 200 個字元，請縮短輸入後再儲存。'
+  if (
+    !settings.numeric ||
+    !NUMERIC_FIELDS.every((key) => typeof settings.numeric[key] === 'string')
+  )
+    return '數值條件欄位格式不正確。'
+  return validateNumeric(settings.numeric)
+}
 export function decodePresets(raw: string | null): Preset[] {
   try {
     const parsed: unknown = JSON.parse(raw || '[]')
     if (!Array.isArray(parsed)) return []
     const names = new Set<string>()
     return parsed
-      .filter((p): p is Preset => {
-        if (
-          !p ||
-          typeof p !== 'object' ||
-          p.version !== 1 ||
-          typeof p.name !== 'string' ||
-          !p.name.trim() ||
-          p.name.length > 60 ||
-          names.has(p.name)
-        )
-          return false
-        const s = p.settings
-        if (
-          !s ||
-          !['market', 'portfolio'].includes(s.scope) ||
-          !STRATEGIES.includes(s.strategy) ||
-          typeof s.only !== 'boolean' ||
-          typeof s.newOnly !== 'boolean' ||
-          typeof s.query !== 'string' ||
-          s.query.length > 200 ||
-          !SORT_KEYS.includes(s.sort) ||
-          !['asc', 'desc'].includes(s.direction)
-        )
-          return false
-        if (
-          !s.numeric ||
-          !NUMERIC_FIELDS.every(
-            (k) => typeof s.numeric[k] === 'string' && s.numeric[k].length <= 30,
-          ) ||
-          validateNumeric(s.numeric)
-        )
-          return false
-        names.add(p.name)
+      .filter((preset): preset is Preset => {
+        if (validatePreset(preset) || names.has(preset.name)) return false
+        names.add(preset.name)
         return true
       })
       .slice(0, 30)

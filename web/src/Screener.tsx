@@ -11,6 +11,7 @@ import {
   matchCount,
   screenerCsv,
   validateNumeric,
+  validatePreset,
 } from './screener-model'
 import type {
   NumericField,
@@ -183,18 +184,17 @@ export function Screener({
       setMessage('請先輸入篩選設定名稱。')
       return
     }
-    if (validationError) {
-      setMessage(validationError)
+    const preset: Preset = { version: 1, name, settings }
+    const presetError = validatePreset(preset)
+    if (presetError) {
+      setMessage(presetError)
       return
     }
     if (presets.length >= 30 && !presets.some((p) => p.name === name)) {
       setMessage('最多可儲存 30 組設定，請先刪除不再使用的設定。')
       return
     }
-    const next = [
-      ...presets.filter((p) => p.name !== name),
-      { version: 1 as const, name, settings },
-    ]
+    const next = [...presets.filter((p) => p.name !== name), preset]
     if (persist(next)) {
       setSelectedPreset(name)
       setMessage(`已儲存「${name}」。設定只保存在目前瀏覽器。`)
@@ -424,6 +424,8 @@ export function Screener({
           <Search size={16} />
           <input
             name="candidate-query"
+            maxLength={200}
+            aria-describedby="candidate-query-help"
             aria-label="搜尋候選標的"
             placeholder="搜尋代碼或公司…"
             value={query}
@@ -431,6 +433,9 @@ export function Screener({
           />
         </label>
       </div>
+      <p className="footnote" id="candidate-query-help">
+        搜尋文字最多 200 個字元；儲存設定時保留完整文字，不會自動截短。
+      </p>
       <div className="candidate-filters">
         <label className="checkbox-label">
           <input

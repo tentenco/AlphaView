@@ -7,6 +7,7 @@ import {
   filterRows,
   screenerCsv,
   validateNumeric,
+  validatePreset,
 } from './screener-model'
 import type { ScreenerSettings } from './screener-model'
 const settings = (extra: Partial<ScreenerSettings> = {}): ScreenerSettings => ({
@@ -85,6 +86,33 @@ describe('screener numeric filters and sorting', () => {
   })
 })
 describe('saved presets', () => {
+  it('uses the same persistence limits for validation and reload without truncation', () => {
+    const good = {
+      version: 1,
+      name: 'n'.repeat(60),
+      settings: settings({
+        query: 'q'.repeat(200),
+        numeric: { ...EMPTY_NUMERIC, priceMin: '0'.repeat(29) + '1' },
+      }),
+    }
+    expect(validatePreset(good)).toBeNull()
+    expect(decodePresets(JSON.stringify([good]))).toEqual([good])
+    for (const bad of [
+      { ...good, name: 'n'.repeat(61) },
+      { ...good, settings: { ...good.settings, query: 'q'.repeat(201) } },
+      {
+        ...good,
+        settings: {
+          ...good.settings,
+          numeric: { ...EMPTY_NUMERIC, priceMin: '0'.repeat(30) + '1' },
+        },
+      },
+    ]) {
+      expect(validatePreset(bad)).toBeTruthy()
+      expect(decodePresets(JSON.stringify([bad]))).toEqual([])
+    }
+  })
+
   it('accepts validated version-one records and rejects corrupt, unknown or duplicated records', () => {
     const good = { version: 1, name: 'Good', settings: settings() }
     const bad = [

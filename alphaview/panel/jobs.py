@@ -25,6 +25,31 @@ class JobCancelled(Exception):
     pass
 
 
+def recover_interrupted_locked(db, timestamp=None):
+    """Caller must own RUN_LOCK: no live workspace writer can then own these jobs."""
+    db.execute("""UPDATE jobs SET status='interrupted',finished_at=?,error=?
+                  WHERE status='running'""",
+               (timestamp or store.now(), "背景程序已中斷，請手動重新執行"))
+
+
+def launch_locked(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
+    """Adopt an already-held RUN_LOCK; worker or launch failure releases it.
+
+    Job creation and any scheduler claim must commit before calling this helper.
+    The caller must not release or reacquire the lock after handing it over.
+    """
+    try:
+        threading.Thread(target=worker, args=(job_id, kind, scope, symbols or [], universe_limit), daemon=True).start()
+    except Exception as exc:
+        try:
+            with store.connect() as db:
+                db.execute("UPDATE jobs SET status='failed',finished_at=?,error=? WHERE id=?",
+                           (store.now(), f"無法啟動背景作業：{str(exc)[:400]}", job_id))
+        finally:
+            RUN_LOCK.release()
+        raise
+
+
 def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
     result = {}
 
@@ -103,7 +128,7 @@ def start_job(body: JobInput):
     if not RUN_LOCK.acquire(blocking=False):
         raise HTTPException(409, "已有資料作業正在執行")
     job_id = str(uuid.uuid4())
-    inserted = False
+    owns_lock = True
     try:
         if body.universe_limit != 250 and (body.kind != "refresh" or body.scope != "market"):
             raise HTTPException(422, "只有市場更新作業可設定股票池上限")
@@ -114,17 +139,14 @@ def start_job(body: JobInput):
         elif body.symbols:
             raise HTTPException(422, "只有重試作業可指定標的")
         with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            recover_interrupted_locked(db)
             db.execute("INSERT INTO jobs(id,kind,status,started_at,progress,scope,cancel_requested) VALUES (?,?,'running',?,'準備開始',?,0)",
                        (job_id, body.kind, store.now(), body.scope))
-        inserted = True
-        threading.Thread(target=worker, args=(job_id, body.kind, body.scope, list(dict.fromkeys(body.symbols)), body.universe_limit), daemon=True).start()
+        owns_lock = False
+        launch_locked(job_id, body.kind, body.scope, list(dict.fromkeys(body.symbols)), body.universe_limit)
     except Exception as exc:
-        try:
-            if inserted:
-                with store.connect() as db:
-                    db.execute("UPDATE jobs SET status='failed',finished_at=?,error=? WHERE id=?",
-                               (store.now(), f"無法啟動背景作業：{str(exc)[:400]}", job_id))
-        finally:
+        if owns_lock:
             RUN_LOCK.release()
         if isinstance(exc, HTTPException):
             raise

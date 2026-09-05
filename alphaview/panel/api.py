@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import json
@@ -11,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import market, research, store, quality, changes, charting, quotes, scan_context
-from .jobs import RUN_LOCK, router as jobs_router
+from . import market, research, store, quality, changes, charting, quotes, scan_context, scheduler
+from .jobs import RUN_LOCK, recover_interrupted_locked, router as jobs_router
 from .portfolio_transfer import router as portfolio_transfer_router
 from .backups import router as backups_router
 
@@ -23,16 +24,21 @@ async def lifespan(app):
     if RUN_LOCK.acquire(blocking=False):
         try:
             with store.connect() as db:
-                db.execute("UPDATE jobs SET status='interrupted',finished_at=?,error='伺服器重啟，請重新執行' WHERE status='running'", (store.now(),))
+                recover_interrupted_locked(db)
         finally:
             RUN_LOCK.release()
-    yield
+    local_schedule = scheduler.Scheduler().start()
+    try:
+        yield
+    finally:
+        await asyncio.to_thread(local_schedule.stop)
 
 
 app = FastAPI(title="AlphaView Research Panel", lifespan=lifespan)
 app.include_router(jobs_router)
 app.include_router(portfolio_transfer_router)
 app.include_router(backups_router)
+app.include_router(scheduler.router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 

@@ -89,7 +89,7 @@ def test_backtest_executes_next_open_with_cost_and_leaves_open_marked():
     with patch.object(store, "history", return_value=f), patch.object(research, "indicators", return_value=f):
         result = research.backtest("TEST", "turtle")
     assert result["open_position"]["date"] == f.iloc[23].date
-    expected_units = 10000 * .999 / f.iloc[23].open
+    expected_units = 10000 / (1.001 * f.iloc[23].open)
     assert result["final"] == pytest.approx(round(expected_units * f.iloc[-1].close, 2))
     assert result["curve"][1]["value"] == 10000
     assert result["trades"] == []

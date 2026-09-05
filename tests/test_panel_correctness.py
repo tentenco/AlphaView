@@ -122,7 +122,8 @@ def test_valid_backtest_is_strict_json_and_uses_next_open():
     with patch.object(store, "history", return_value=frame), patch.object(research, "indicators", return_value=prepared):
         result = research.backtest("TEST", "turtle")
     assert result["open_position"]["date"] == frame.iloc[23].date
-    assert result["final"] == pytest.approx(round(10_000 * .999 / frame.iloc[23].open * frame.iloc[-1].close, 2))
+    expected_units = 10_000 / (frame.iloc[23].open * 1.001)
+    assert result["final"] == pytest.approx(expected_units * frame.iloc[-1].close)
     json.dumps(result, allow_nan=False)
 
 

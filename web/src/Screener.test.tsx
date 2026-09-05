@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Screener, UNIVERSE_LIMIT_KEY } from './Screener'
@@ -145,6 +145,37 @@ describe('screener interaction lifecycle', () => {
       'market',
     )
   })
+
+  it.each(['query', 'numeric'] as const)(
+    'preserves oversized %s input and rejects saving before local storage',
+    async (field) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(response(scan('market', '2026-09-04', 'DELL'))),
+      )
+      render(<Screener {...props()} />)
+      await screen.findByRole('button', { name: 'DELL' })
+      await userEvent.click(screen.getByText('進階篩選與儲存設定'))
+      await userEvent.type(screen.getByRole('textbox', { name: '篩選設定名稱' }), '保留原文')
+      const input =
+        field === 'query'
+          ? screen.getByRole('textbox', { name: '搜尋候選標的' })
+          : screen.getByRole('spinbutton', { name: '調整股價下限（USD）' })
+      const value = field === 'query' ? 'q'.repeat(201) : '0'.repeat(30) + '1'
+      fireEvent.change(input, { target: { value } })
+      await userEvent.click(screen.getByRole('button', { name: '儲存設定' }))
+      expect(
+        screen.getByText(
+          field === 'query'
+            ? '搜尋文字最多 200 個字元，請縮短輸入後再儲存。'
+            : '每個數值條件最多 30 個字元，請縮短輸入後再儲存。',
+        ),
+      ).toBeTruthy()
+      expect(localStorage.getItem(PRESET_KEY)).toBeNull()
+      expect(input).toHaveProperty('value', value)
+      if (field === 'query') expect(input.getAttribute('maxLength')).toBe('200')
+    },
+  )
   it('downloads every filtered result across pages rather than only visible rows', async () => {
     const result = scan('market', '2026-09-04', 'DELL')
     result.result = Array.from({ length: 31 }, (_, i) => ({

@@ -102,7 +102,18 @@ def render(directory):
             encoded = base64.b64encode(screenshot.read_bytes()).decode("ascii")
             document += f'<section><h2>介面檢閱</h2><p>{esc(caption)}</p><img style="display:block;width:100%;height:auto;border:1px solid #34403a;border-radius:8px" alt="{esc(caption)}" src="data:image/png;base64,{encoded}"></section>'
     document += '<h2>開發與驗證紀錄</h2>' + (cards or '<p>正在進行第一輪工作。</p>')
-    document += '<h2>下一輪 Agent Harness · Review 清單</h2><p>勾選供本次 review 使用；此 HTML 不會將勾選寫回專案。</p><ul>' + (items or '<li>下一輪待辦會在結束前整理。</li>') + '</ul>'
+    document += '<h2>下一輪 Agent Harness · Review 清單</h2><p>勾選後可匯出下一輪任務，交給下一次 Agent Harness。這份 HTML 不會修改專案或啟動任務；重載前請先匯出。</p><ul>' + (items or '<li>下一輪待辦會在結束前整理。</li>') + '</ul>'
+    document += '''<div style="margin-top:24px"><label for="review-notes">檢閱備註</label><textarea id="review-notes" rows="4" maxlength="6000" style="display:block;width:100%;margin:10px 0 16px;padding:14px;background:#151b18;color:#e8eceb;border:1px solid #34403a;border-radius:8px;font:inherit" placeholder="補充下一輪想優先改善的操作或問題…"></textarea><button id="export-review" type="button" style="padding:12px 18px;border:1px solid #78d5ad;border-radius:6px;background:#173c2c;color:#e8eceb;font:inherit;cursor:pointer">匯出下一輪任務 JSON</button><p id="review-status" role="status"></p></div>
+<script>document.getElementById('export-review').addEventListener('click',function(){
+const tasks=Array.from(document.querySelectorAll('.review-task input:checked')).map(input=>input.closest('label').textContent.trim().replace(/\\s+/g,' '));
+const notes=document.getElementById('review-notes').value.trim();
+const status=document.getElementById('review-status');
+if(!tasks.length&&!notes){status.textContent='請至少勾選一項任務或填寫檢閱備註。';return;}
+const payload={format_version:1,project:'AlphaView',exported_at:new Date().toISOString(),tasks,notes};
+const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)+'\\n'],{type:'application/json'}));
+const link=document.createElement('a');link.href=url;link.download='alphaview-next-harness.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+status.textContent='已匯出 '+tasks.length+' 項任務；這不會自動開始下一輪開發。';
+});</script>'''
     document += f'<footer>AlphaView · Powered by Tentenai.com · 報告產生於 {esc(now())}<br>本機檢閱檔案；不包含持股明細、成本或 API secrets。</footer></html>'
     (directory / "review.html").write_text(document)
     return directory / "review.html"

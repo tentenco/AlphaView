@@ -31,9 +31,9 @@ def test_diagnostics_match_two_hand_computed_trades_and_daily_returns():
     prepared.loc[[203, 208], "low10"] = 200
     with patch.object(store, "history", return_value=raw), patch.object(research, "indicators", return_value=prepared):
         result = research.backtest("TEST", "turtle", initial=1000, fee_bps=100, start_date=raw.iloc[200].date)
-    first_units = 1000 * .99 / 100
+    first_units = 1000 / 101
     first_proceeds = first_units * 120 * .99
-    second_units = first_proceeds * .99 / 100
+    second_units = first_proceeds / 101
     final = second_units * 90 * .99
     equity = np.array([1000, 1000, first_units * 100, first_units * 110, first_units * 110,
                        first_proceeds, first_proceeds, second_units * 100, second_units * 90,
@@ -43,7 +43,7 @@ def test_diagnostics_match_two_hand_computed_trades_and_daily_returns():
     assert result["final"] == pytest.approx(final)
     assert result["trades"][0]["net_pnl"] == pytest.approx(first_proceeds - 1000)
     assert result["trades"][1]["net_pnl"] == pytest.approx(final - first_proceeds)
-    assert result["trades"][0]["entry_fee"] == 10
+    assert result["trades"][0]["entry_fee"] == pytest.approx(first_units * 100 * .01)
     assert result["trades"][0]["exit_fee"] == pytest.approx(first_units * 120 * .01)
     assert result["win_rate_pct"] == 50
     assert result["profit_factor"] == pytest.approx((first_proceeds - 1000) / (first_proceeds - final))

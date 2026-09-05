@@ -29,3 +29,10 @@ def expected_sessions(first, last):
         return []
     cal = calendar(pd.Timestamp(last).year)
     return [d.date().isoformat() for d in cal.sessions_in_range(first, last)]
+
+
+def next_session_ready_after(session):
+    """UTC eligibility time after an attempted session, honoring early closes/DST."""
+    cal = calendar(pd.Timestamp(session).year)
+    following = cal.next_session(pd.Timestamp(session))
+    return (cal.session_close(following) + pd.Timedelta(minutes=15)).isoformat()

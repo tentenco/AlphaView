@@ -80,7 +80,18 @@ def init_db():
             started_at TEXT NOT NULL, finished_at TEXT, progress TEXT,
             result TEXT, error TEXT
         );
+        CREATE TABLE IF NOT EXISTS refresh_schedule (
+            id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+            scope TEXT NOT NULL DEFAULT 'market' CHECK(scope IN ('market','portfolio')),
+            universe_limit INTEGER NOT NULL DEFAULT 250 CHECK(universe_limit IN (250,500,1000)),
+            version INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS schedule_attempts (
+            session_date TEXT PRIMARY KEY, job_id TEXT NOT NULL UNIQUE,
+            scope TEXT NOT NULL, universe_limit INTEGER NOT NULL, claimed_at TEXT NOT NULL
+        );
         """)
+        db.execute("INSERT OR IGNORE INTO refresh_schedule(id,updated_at) VALUES (1,?)", (now(),))
         for table in ("scans", "jobs"):
             if "scope" not in {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}:
                 db.execute(f"ALTER TABLE {table} ADD COLUMN scope TEXT NOT NULL DEFAULT 'portfolio'")
