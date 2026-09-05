@@ -594,6 +594,7 @@ export default function App() {
   const overviewPending = useRef(false)
   const lastOverviewAttempt = useRef(-Infinity)
   const overviewFailed = useRef(false)
+  const loadedRevision = useRef<string | undefined>(undefined)
   const load = useCallback(async (replace = true) => {
     if (!replace && overviewPending.current) return
     overviewController.current?.abort()
@@ -603,9 +604,29 @@ export default function App() {
     overviewPending.current = true
     lastOverviewAttempt.current = Date.now()
     try {
+      if (!replace && loadedRevision.current) {
+        const status = await api<{
+          revision: string
+          jobs_revision: string
+          jobs: Overview['jobs']
+        }>('/api/status', { signal: controller.signal })
+        if (!mounted.current || current !== overviewRequest.current || controller.signal.aborted)
+          return
+        if (status.revision === loadedRevision.current) {
+          overviewFailed.current = false
+          setData((previous) =>
+            previous && previous.jobs_revision !== status.jobs_revision
+              ? { ...previous, jobs: status.jobs, jobs_revision: status.jobs_revision }
+              : previous,
+          )
+          setError('')
+          return
+        }
+      }
       const result = await api<Overview>('/api/overview', { signal: controller.signal })
       if (mounted.current && current === overviewRequest.current) {
         overviewFailed.current = false
+        loadedRevision.current = result.revision
         setData(result)
         setError('')
       }

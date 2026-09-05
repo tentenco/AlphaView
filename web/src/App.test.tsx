@@ -537,3 +537,137 @@ describe('stale portfolio summary', () => {
     expect(screen.getByText('當日損益').parentElement?.querySelector('h2')?.textContent).toBe('—')
   })
 })
+
+describe('revision-aware lightweight polling', () => {
+  const full = (revision = 'db:1:session', jobs_revision = '0'): Overview => ({
+    ...empty(),
+    revision,
+    jobs_revision,
+  })
+  it('polls only status when data is unchanged and fetches full data after revision changes', async () => {
+    let changed = false
+    const fetcher = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        response(
+          url === '/api/status'
+            ? {
+                revision: changed ? 'db:2:session' : 'db:1:session',
+                jobs_revision: '0',
+                jobs: [],
+              }
+            : full(changed ? 'db:2:session' : 'db:1:session'),
+        ),
+      ),
+    )
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(30000)
+    })
+    expect(fetcher.mock.calls.map((call) => call[0])).toEqual(['/api/overview', '/api/status'])
+    changed = true
+    await act(async () => {
+      vi.advanceTimersByTime(30000)
+    })
+    expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
+      '/api/overview',
+      '/api/status',
+      '/api/status',
+      '/api/overview',
+    ])
+  })
+  it('updates active job progress and completion without downloading unchanged market data', async () => {
+    let calls = 0
+    const initial = { ...running(), revision: 'db:1:session', jobs_revision: '1' }
+    const fetcher = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/overview') return Promise.resolve(response(initial))
+      calls++
+      return Promise.resolve(
+        response({
+          revision: initial.revision,
+          jobs_revision: String(calls + 1),
+          jobs: [
+            {
+              ...initial.jobs[0],
+              progress: 'Progress updated',
+              status: calls === 1 ? 'running' : 'completed',
+            },
+          ],
+        }),
+      )
+    })
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(screen.getByText('Progress updated')).toBeTruthy()
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(screen.queryByRole('button', { name: '取消作業' })).toBeNull()
+    expect(fetcher.mock.calls.filter((call) => call[0] === '/api/overview')).toHaveLength(1)
+    await act(async () => {
+      vi.advanceTimersByTime(4000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    await act(async () => {
+      vi.advanceTimersByTime(26000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(4)
+  })
+  it('aborts slow status on manual refresh and ignores its late revision', async () => {
+    const status = deferred<Response>()
+    let fullCalls = 0
+    const fetcher = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/status') return status.promise
+      if (url === '/api/jobs') return Promise.resolve(response({ id: 'manual' }))
+      fullCalls++
+      return Promise.resolve(response(full(fullCalls === 1 ? 'old' : 'new')))
+    })
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    await act(async () => {
+      vi.advanceTimersByTime(30000)
+    })
+    fireEvent.click(screen.getByRole('button', { name: '更新行情' }))
+    await flush()
+    const statusCall = fetcher.mock.calls.find((call) => call[0] === '/api/status')!
+    expect(statusCall[1].signal.aborted).toBe(true)
+    await act(async () =>
+      status.resolve(response({ revision: 'obsolete', jobs_revision: '9', jobs: [] })),
+    )
+    expect(fullCalls).toBe(2)
+  })
+  it('pauses status while hidden and coalesces focus and visibility return', async () => {
+    const data = full()
+    const fetcher = vi
+      .fn()
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          response(
+            url === '/api/overview'
+              ? data
+              : { revision: data.revision, jobs_revision: '0', jobs: [] },
+          ),
+        ),
+      )
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
+    fireEvent(document, new Event('visibilitychange'))
+    await act(async () => {
+      vi.advanceTimersByTime(60000)
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+    fireEvent(document, new Event('visibilitychange'))
+    fireEvent(window, new Event('focus'))
+    await flush()
+    expect(fetcher.mock.calls.map((call) => call[0])).toEqual(['/api/overview', '/api/status'])
+  })
+})

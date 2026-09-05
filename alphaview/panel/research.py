@@ -168,14 +168,19 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
     transaction owns SQLite's writer reservation. Progress callbacks that write
     job status must stay outside that transaction.
     """
+    from .sessions import latest_completed_session
+    expected_session = latest_completed_session()
     previous = store.latest_scan(scope=scope)
     positions = store.universe(scope)
     frames = {p["symbol"]: indicators(store.history(p["symbol"])) for p in positions}
     observed_dates = {d for f in frames.values() for d in f.get("date", [])}
-    dates = sorted(d for d in observed_dates
-                   if pd.notna(pd.to_datetime(d, format="%Y-%m-%d", errors="coerce")))[-60:]
+    valid_dates = {d for d in observed_dates if len(d) == 10
+                   and pd.notna(pd.to_datetime(d, format="%Y-%m-%d", errors="coerce"))}
+    future_symbols = {symbol for symbol, frame in frames.items()
+                      if any(day in valid_dates and day > expected_session for day in frame.get("date", []))}
+    dates = sorted(day for day in valid_dates if day <= expected_session)[-60:]
     if not dates:
-        raise ValueError("尚無歷史日線，請先更新行情")
+        raise ValueError("尚無歷史日線可供已完成交易日選股；請先更新行情，未發布未收盤或未來日期")
     timestamp = store.now()
     names = {p["symbol"]: p["name"] for p in positions}
     batch = []
@@ -194,9 +199,33 @@ def scan(progress=lambda message: None, scope="portfolio", check_cancel=None):
         if check_cancel is not None:
             check_cancel()
         db.executemany("INSERT INTO scans(created_at,as_of,universe,result,scope) VALUES (?,?,?,?,?)", batch)
+    groups = {key: [] for key in ("current", "missing", "stale", "data_error", "unclosed")}
+    short_history = []
+    for row in results:
+        if row.get("quality", {}).get("status") == "data_error":
+            category = "data_error"
+        elif row["symbol"] in future_symbols:
+            category = "unclosed"
+        elif not row["bars"] or row["date"] is None:
+            category = "missing"
+        elif row["date"] < expected_session:
+            category = "stale"
+        elif row["date"] > expected_session:
+            category = "unclosed"
+        else:
+            category = "current"
+            if any(row["bars"] < strategy["period"] for strategy in STRATEGIES):
+                short_history.append(row["symbol"])
+        groups[category].append(row["symbol"])
     return {"dates": len(dates), "as_of": dates[-1], "symbols": len(frames),
             "matched_symbols": [r["symbol"] for r in results if any(s["matched"] for s in r["signals"])],
-            "data_error_symbols": [r["symbol"] for r in results if r.get("quality", {}).get("status") == "data_error"],
+            "expected_session": expected_session,
+            "coverage": {"total": len(frames), **{key: len(value) for key, value in groups.items()},
+                         "short_history": len(short_history)},
+            **{key + "_symbols": groups[key] for key in ("missing", "stale", "data_error", "unclosed")},
+            "short_history_symbols": short_history,
+            "scan_as_of_stale": dates[-1] < expected_session,
+            "scan_as_of_unclosed": dates[-1] > expected_session,
             "unchanged": previous is not None and previous["result"] == results}
 
 

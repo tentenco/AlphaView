@@ -95,13 +95,26 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
         check_cancel()
         failures = [r for r in result.get("market", []) if r["status"] == "error"]
         invalid = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("data_error_symbols", [])})
-        partial = bool(failures or invalid or result["scan_errors"])
+        missing = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("missing_symbols", [])})
+        stale = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("stale_symbols", [])})
+        unclosed = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("unclosed_symbols", [])})
+        short_history = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("short_history_symbols", [])})
+        lagging_scopes = [key for key, scan in result["scans"].items() if scan.get("scan_as_of_stale")]
+        unclosed_scopes = [key for key, scan in result["scans"].items() if scan.get("scan_as_of_unclosed")]
+        partial = bool(failures or invalid or missing or stale or unclosed or lagging_scopes or unclosed_scopes or result["scan_errors"])
         summary = (f"部分完成：{len(failures)} 檔更新失敗、{len(invalid)} 檔資料異常已排除"
+                   + (f"、{len(missing)} 檔缺少行情" if missing else "")
+                   + (f"、{len(stale)} 檔行情過期" if stale else "")
+                   + (f"、{len(unclosed)} 檔含未完成交易日日線" if unclosed else "")
+                   + (f"、{len(lagging_scopes)} 個股票池選股日期落後最新已收盤交易日" if lagging_scopes else "")
+                   + (f"、{len(unclosed_scopes)} 個股票池選股日期超出最新已收盤交易日" if unclosed_scopes else "")
                    + (f"、{len(result['scan_errors'])} 個股票池無法重算" if result["scan_errors"] else "")
                    + "；請查看資料管理") if partial else (
             f"選股完成：掃描 {result['scan']['symbols']} 檔，{len(result['scan']['matched_symbols'])} 檔符合條件"
             + ("；與上次結果相同" if result["scan"].get("unchanged") else "")
             + ("；已同步重算另一股票池" if len(scopes) > 1 else ""))
+        if short_history:
+            summary += f"；{len(short_history)} 檔有效歷史尚未達部分策略觀察期，並非更新失敗"
         # Cancellation requested before terminal commit remains visible and wins.
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")

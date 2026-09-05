@@ -137,6 +137,27 @@ def init_db():
         if "cancel_requested" not in {r["name"] for r in db.execute("PRAGMA table_info(jobs)")}:
             db.execute("ALTER TABLE jobs ADD COLUMN cancel_requested INTEGER NOT NULL DEFAULT 0")
         db.execute("CREATE INDEX IF NOT EXISTS idx_scan_scope_date ON scans(scope,as_of,id)")
+        # Transactional counters detect even same-timestamp updates and replacements.
+        # Job progress has its own counter so polling need not reload market data.
+        db.execute("CREATE TABLE IF NOT EXISTS panel_revisions (id INTEGER PRIMARY KEY CHECK(id=1), identity TEXT NOT NULL, data_revision INTEGER NOT NULL DEFAULT 0, job_revision INTEGER NOT NULL DEFAULT 0)")
+        db.execute("INSERT OR IGNORE INTO panel_revisions(id,identity) VALUES(1,lower(hex(randomblob(16))))")
+        for table in ("positions", "bars", "datasets", "scans", "market_universe", "market_universe_metadata", "jobs"):
+            counter = "job_revision" if table == "jobs" else "data_revision"
+            for operation in ("INSERT", "UPDATE", "DELETE"):
+                db.execute(f"CREATE TRIGGER IF NOT EXISTS revision_{table}_{operation.lower()} AFTER {operation} ON {table} BEGIN UPDATE panel_revisions SET {counter}={counter}+1 WHERE id=1; END")
+
+
+def revision(expected_session):
+    with connect() as db:
+        row = db.execute("SELECT * FROM panel_revisions WHERE id=1").fetchone()
+    return {"revision": f"{row['identity']}:{row['data_revision']}:{expected_session}",
+            "jobs_revision": str(row["job_revision"])}
+
+
+def public_jobs():
+    with connect() as db:
+        return [dict(row) for row in db.execute("SELECT id,kind,status,started_at,finished_at,progress,error,scope,cancel_requested FROM jobs ORDER BY started_at DESC LIMIT 10")]
+
 
 
 def universe(scope="portfolio"):

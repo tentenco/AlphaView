@@ -124,8 +124,7 @@ def overview():
     with store.connect() as db:
         scans = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='portfolio' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
         market_dates = [dict(r) for r in db.execute("SELECT as_of,MAX(created_at) AS created_at FROM scans WHERE scope='market' GROUP BY as_of ORDER BY as_of DESC LIMIT 60")]
-        # Polling needs public job state, not the potentially large stored result payload.
-        jobs = [dict(r) for r in db.execute("SELECT id,kind,status,started_at,finished_at,progress,error,scope,cancel_requested FROM jobs ORDER BY started_at DESC LIMIT 10")]
+        jobs = store.public_jobs()
     matched = [r for r in recent["result"] if any(s["matched"] for s in r["signals"])] if recent else []
     return {"positions": items, "summary": {"market_value": total, "pnl": pnl,
         "pnl_pct": quotes.finite(pnl / cost * 100) if pnl is not None and cost else None,
@@ -142,7 +141,16 @@ def overview():
         "market_scan": scan_context.decorate(store.latest_scan(scope="market"), market_members), "market_scan_dates": market_dates,
         "market_universe": market_members,
         "market_universe_meta": market.universe_metadata(),
-        "datasets": store.dataset_rows(), "jobs": jobs, "server_time": store.now()}
+        "datasets": store.dataset_rows(), "jobs": jobs, "server_time": store.now(),
+        **store.revision(expected_session)}
+
+
+@app.get("/api/status")
+@store.snapshot_read
+def polling_status():
+    expected_session = sessions.latest_completed_session()
+    return {**store.revision(expected_session), "jobs": store.public_jobs(),
+            "expected_session": expected_session}
 
 
 @app.get("/api/scans")

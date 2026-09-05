@@ -115,6 +115,14 @@ def render(directory):
             if failures:
                 document += '<p>失敗紀錄：' + '<br>'.join(esc(row.get("error", row.get("reason", row.get("scenario", "未分類")))) for row in failures) + '</p>'
             document += '</section>'
+    coverage_path = directory / "market-coverage-latest.json"
+    if coverage_path.exists():
+        coverage = json.loads(coverage_path.read_text())
+        counts = coverage.get("quality", {})
+        document += f'<section><h2>最新市場資料實測</h2><p>檢查時間（臺灣時間）：{esc(taipei(coverage["checked_at"]))}。這是所選股票池的本地快照，並非全美股或即時行情。</p><div class="stats">'
+        metrics = [("市場候選", coverage["pool"]), ("行情品質通過", counts.get("ok", 0)), ("異常／缺行情", counts.get("error", 0) + counts.get("missing", 0)), ("符合至少一策略", coverage["matched"])]
+        document += ''.join(f'<div class="stat">{esc(label)}<strong>{esc(value)}</strong></div>' for label, value in metrics)
+        document += f'</div><p>其中 {esc(coverage["new_matches"])} 檔符合標的不在個人清單內。異常 {esc(counts.get("error", 0))} 檔、缺行情 {esc(counts.get("missing", 0))} 檔、過期 {esc(counts.get("stale", 0))} 檔；未以重建價格或零值補齊。</p></section>'
     comparison_path = directory / "price-repair-summary.json"
     if comparison_path.exists():
         comparison = json.loads(comparison_path.read_text())
@@ -130,7 +138,7 @@ def render(directory):
     document += section('active', '斷點中的工作', '目前沒有進行中的項目。')
     document += section('deferred', '未完成事項與限制', '尚未整理限制；請以事件紀錄與下一輪待辦核對。')
     document += section('review_steps', '使用者檢查步驟', '請開啟本機 AlphaView，依本輪已完成項目進行檢查。')
-    for filename, caption in (("market-overview.png", "市場概況：實際股票池、資料涵蓋率與各指標分母"),):
+    for filename, caption in (("market-overview.png", "市場概況：已保存畫面，數值以擷取時點為準；最新涵蓋率見本報告限制與證據"),):
         screenshot = directory / filename
         if screenshot.exists():
             encoded = base64.b64encode(screenshot.read_bytes()).decode("ascii")

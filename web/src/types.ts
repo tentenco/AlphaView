@@ -82,6 +82,8 @@ export type Job = {
   error: string | null
 }
 export type Overview = {
+  revision?: string
+  jobs_revision?: string
   market_universe_meta?: {
     requested_limit: number
     provider_total: number
