@@ -18,9 +18,13 @@ The repository contains no personal portfolio seed. The optional `seed` command 
 
 ```sh
 uv run --extra web --extra dev pytest -q
+npm test --prefix web
+npm run format:check --prefix web
 npm run build --prefix web
-uv build
+git diff --check
 ```
+
+These are the shared completion gates in [CLAUDE.md](CLAUDE.md). `uv build` is an optional packaging check. Agents should also read the [Codex handoff](docs/codex-handoff-2026-09-16.md) before selecting unfinished work.
 
 ## Optional A-share CLI
 

@@ -1,5 +1,6 @@
 
 import math
+from collections.abc import Mapping
 from numbers import Real
 
 import numpy as np
@@ -104,7 +105,9 @@ def fetch_symbol(symbol):
     if frame.empty:
         raise ValueError("資料源未回傳日線；請確認代碼或稍後重試")
     meta = ticker.get_history_metadata() or {}
-    if not isinstance(meta, dict):
+    # yfinance returns a lazy Mapping; converting it to dict would fetch
+    # unrelated intraday metadata such as tradingPeriods.
+    if not isinstance(meta, Mapping):
         raise ValueError("資料源標的資訊格式無效；未替換原有資料")
     currency = meta.get("currency")
     if currency != "USD":

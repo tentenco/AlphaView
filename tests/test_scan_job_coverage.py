@@ -82,6 +82,25 @@ def test_all_valid_history_is_complete(workspace):
     assert result['result']['scan']['short_history_symbols']==[]
 
 
+def test_scan_all_recalculates_both_lists_without_downloading(workspace):
+    add('COMMON', workspace, market=True)
+    add('PERSONAL', workspace)
+    with patch.object(jobs.market, 'refresh', side_effect=AssertionError('must not download')):
+        result = run_job('scan_all', 'market')
+    assert result['status'] == 'completed'
+    assert set(result['result']['scans']) == {'market', 'portfolio'}
+    assert result['result']['scans']['market']['symbols'] == 1
+    assert result['result']['scans']['portfolio']['symbols'] == 2
+
+
+def test_scan_all_preserves_success_if_primary_list_has_no_data(workspace):
+    add('PERSONAL', workspace)
+    result = run_job('scan_all', 'market')
+    assert result['status'] == 'partial'
+    assert set(result['result']['scans']) == {'portfolio'}
+    assert 'market' in result['result']['scan_errors']
+
+
 def test_retry_coverage_unions_scopes_without_double_counting(workspace):
     add('COMMON',workspace,market=True)
     add('MISSING',[],market=True)

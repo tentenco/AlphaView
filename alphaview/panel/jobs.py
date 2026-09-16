@@ -16,7 +16,7 @@ RUN_LOCK = WorkspaceLock()
 
 class JobInput(BaseModel):
     scope: Literal["portfolio", "market"] = "portfolio"
-    kind: Literal["refresh", "scan", "retry", "resume"]
+    kind: Literal["refresh", "scan", "scan_all", "retry", "resume"]
     symbols: list[str] = Field(default_factory=list, max_length=100)
     universe_limit: Literal[250, 500, 1000] = 250
 
@@ -72,6 +72,8 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
             result["market"] = market.refresh(progress, scope=scope, symbols=symbols if kind == "retry" else None, check_cancel=check_cancel, universe_limit=universe_limit)
         check_cancel()
         scopes = [scope]
+        if kind == "scan_all":
+            scopes.append("portfolio" if scope == "market" else "market")
         if kind in {"retry", "resume"}:
             requested = (set(symbols or []) if kind == "retry" else
                          {row["symbol"] for row in result.get("market", []) if row.get("action") == "downloaded"})
@@ -88,13 +90,17 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
             except JobCancelled:
                 raise
             except Exception as exc:
-                if scan_scope == scope:
+                if scan_scope == scope and kind != "scan_all":
                     raise ValueError(f"主要股票池無法完成選股：{exc}") from exc
                 result["scan_errors"][scan_scope] = str(exc)[:400]
                 continue
             result["scans"][scan_scope] = scanned
             if scan_scope == scope:
                 result["scan"] = scanned
+        if kind == "scan_all" and "scan" not in result:
+            if not result["scans"]:
+                raise ValueError("兩個股票池都無法完成選股；請先確認已有可用日線")
+            result["scan"] = next(iter(result["scans"].values()))
         check_cancel()
         failures = [r for r in result.get("market", []) if r["status"] == "error"]
         invalid = sorted({symbol for scan in result["scans"].values() for symbol in scan.get("data_error_symbols", [])})

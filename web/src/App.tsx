@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   ChartLine,
   Checkmark,
   Dashboard,
   DataBase,
-  Document,
   Filter,
   Help,
+  Language,
   Menu,
+  Moon,
   Play,
   Portfolio as PortfolioIcon,
   Renew,
   Search,
+  Sun,
   ChartEvaluation,
   Compare,
   WarningAlt,
@@ -25,6 +27,7 @@ import { Screener } from './Screener'
 import type { UniverseLimit } from './Screener'
 import { DataQuality } from './DataQuality'
 import { MarketOverview } from './MarketOverview'
+import { MarketRegime } from './MarketRegime'
 import { WorkspaceBackup } from './WorkspaceBackup'
 import { ScheduleSettings } from './ScheduleSettings'
 import { StorageMaintenance } from './StorageMaintenance'
@@ -32,9 +35,30 @@ import { ResumeUpdate } from './ResumeUpdate'
 import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { PriceChart } from './Charts'
 import { Comparison } from './Comparison'
+import { applyTheme, readTheme, saveTheme, type Theme } from './theme'
+import { LocaleBridge, readLocale, type Locale } from './locale'
+import { AlphaDashboard } from './AlphaDashboard'
+import { HoldingAlertBell } from './HoldingAlertBell'
+import { AlphaPreferencesTransfer } from './AlphaPreferencesTransfer'
+import { DeferredContent } from './DeferredContent'
+const AlphaHelp = lazy(() =>
+  import('./AlphaHelp').then((module) => ({ default: module.AlphaHelp })),
+)
+const AlphaLab = lazy(() => import('./AlphaLab').then((module) => ({ default: module.AlphaLab })))
 
-type Page = 'overview' | 'market' | 'screener' | 'portfolio' | 'strategies' | 'comparison' | 'data'
+type Page =
+  | 'alpha'
+  | 'alpha-lab'
+  | 'overview'
+  | 'market'
+  | 'screener'
+  | 'portfolio'
+  | 'strategies'
+  | 'comparison'
+  | 'data'
 const nav = [
+  { id: 'alpha', title: 'Alpha Picks', icon: Filter },
+  { id: 'alpha-lab', title: 'Alpha 實驗室', icon: ChartEvaluation },
   { id: 'overview', title: '投資總覽', icon: Dashboard },
   { id: 'market', title: '市場概況', icon: ChartEvaluation },
   { id: 'screener', title: '每日選股', icon: Filter },
@@ -384,6 +408,7 @@ function Home({
 
 function DataPage({
   data,
+  locale,
   onRefresh,
   busy,
   onRetry,
@@ -391,6 +416,7 @@ function DataPage({
   onResume,
 }: {
   data: Overview
+  locale: Locale
   onRefresh: () => void
   busy: boolean
   onRetry: (symbols: string[]) => Promise<void>
@@ -468,6 +494,7 @@ function DataPage({
         refreshKey={data.jobs.map((job) => `${job.id}:${job.status}`).join(',')}
       />
       <WorkspaceBackup />
+      <AlphaPreferencesTransfer locale={locale} />
       <StorageMaintenance />
       <DataQuality busy={busy} onRetry={onRetry} onOpen={onOpen} />
       <div className="section-heading">
@@ -570,7 +597,11 @@ function DataPage({
                 </span>
                 <div>
                   <strong>
-                    {job.scope === 'market' ? '市場候選 · ' : '我的清單 · '}
+                    {job.kind === 'scan_all'
+                      ? '整個工作區 · '
+                      : job.scope === 'market'
+                        ? '市場候選 · '
+                        : '我的清單 · '}
                     {job.kind === 'resume'
                       ? '續跑行情更新與掃描'
                       : job.kind === 'retry'
@@ -620,7 +651,7 @@ function DataPage({
 
 export default function App() {
   const initial = location.hash.slice(1) as Page
-  const [page, setPage] = useState<Page>(nav.some((n) => n.id === initial) ? initial : 'overview')
+  const [page, setPage] = useState<Page>(nav.some((n) => n.id === initial) ? initial : 'alpha')
   const [screenInitial, setScreenInitial] = useState<{ scope: Scope; strategy: string }>({
     scope: 'market',
     strategy: 'all',
@@ -640,6 +671,16 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [help, setHelp] = useState(false)
   const [mobile, setMobile] = useState(false)
+  const [navExpanded, setNavExpanded] = useState(() => {
+    try {
+      return localStorage.getItem('alphaview-expanded-navigation') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [theme, setTheme] = useState<Theme>(readTheme)
+  const [locale, setLocale] = useState<Locale>(readLocale)
+  const [comparisonInitial, setComparisonInitial] = useState<string[] | undefined>()
   const [starting, setStarting] = useState(false)
   const pendingJob = useRef<string | null>(null)
   const [toast, setToast] = useState('')
@@ -650,6 +691,10 @@ export default function App() {
   const lastOverviewAttempt = useRef(-Infinity)
   const overviewFailed = useRef(false)
   const loadedRevision = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    applyTheme(theme)
+    saveTheme(theme)
+  }, [theme])
   const load = useCallback(async (replace = true) => {
     if (!replace && overviewPending.current) return
     overviewController.current?.abort()
@@ -858,7 +903,8 @@ export default function App() {
     `${p.symbol} ${p.name}`.toLowerCase().includes(query.trim().toLowerCase()),
   )
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${navExpanded ? 'nav-expanded' : ''}`}>
+      <LocaleBridge locale={locale} />
       <header className="app-header">
         <div className="brand-group">
           <button
@@ -870,7 +916,7 @@ export default function App() {
           >
             <Menu size={20} />
           </button>
-          <a href="#overview" className="brand" aria-label="AlphaView 首頁">
+          <a href="#alpha" className="brand" aria-label="AlphaView 首頁">
             <ChartEvaluation size={23} />
             <span>
               Alpha<span className="brand-x">View</span>
@@ -880,6 +926,40 @@ export default function App() {
           <span className="workspace-label">投資研究工作台</span>
         </div>
         <div className="header-right">
+          {data && (
+            <HoldingAlertBell
+              data={data}
+              locale={locale}
+              onOpen={() => {
+                navigate('alpha')
+                requestAnimationFrame(() =>
+                  document
+                    .querySelector('.alpha-alerts')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                )
+              }}
+            />
+          )}
+          <button
+            type="button"
+            className="icon-button language-toggle"
+            aria-label={locale === 'zh-TW' ? 'Switch to English' : '切換為繁體中文'}
+            title={locale === 'zh-TW' ? 'Switch to English' : '切換為繁體中文'}
+            onClick={() => setLocale((current) => (current === 'zh-TW' ? 'en' : 'zh-TW'))}
+          >
+            <Language size={16} />
+            <span>{locale === 'zh-TW' ? 'EN' : '繁中'}</span>
+          </button>
+          <button
+            type="button"
+            className="icon-button theme-toggle"
+            aria-label={theme === 'light' ? '切換為深色模式' : '切換為淺色模式'}
+            aria-pressed={theme === 'dark'}
+            title={theme === 'light' ? '切換為深色模式' : '切換為淺色模式'}
+            onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+          >
+            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
           <button
             type="button"
             className="search-trigger"
@@ -922,6 +1002,41 @@ export default function App() {
         <div className="rail-bottom">
           <button
             type="button"
+            className="desktop-nav-toggle"
+            translate="no"
+            aria-label={
+              locale === 'en'
+                ? navExpanded
+                  ? 'Collapse navigation labels'
+                  : 'Expand navigation labels'
+                : navExpanded
+                  ? '收合導覽文字'
+                  : '展開導覽文字'
+            }
+            title={
+              locale === 'en'
+                ? navExpanded
+                  ? 'Collapse navigation labels'
+                  : 'Expand navigation labels'
+                : navExpanded
+                  ? '收合導覽文字'
+                  : '展開導覽文字'
+            }
+            aria-expanded={navExpanded}
+            onClick={() => {
+              setNavExpanded(!navExpanded)
+              try {
+                localStorage.setItem('alphaview-expanded-navigation', String(!navExpanded))
+              } catch {
+                /* Layout remains usable for the current session. */
+              }
+            }}
+          >
+            <Menu size={18} />
+            <span>{locale === 'en' ? 'Collapse navigation' : '收合導覽'}</span>
+          </button>
+          <button
+            type="button"
             aria-label="使用說明"
             title="使用說明"
             onClick={() => setHelp(true)}
@@ -943,17 +1058,22 @@ export default function App() {
       <main className="main">
         <div className="breadcrumb">
           個人工作區 <span>/</span> <strong>{nav.find((n) => n.id === page)?.title}</strong>
-          {page !== 'data' && page !== 'screener' && page !== 'market' && page !== 'comparison' && (
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => run('refresh')}
-              disabled={busy}
-            >
-              <Renew size={14} className={busy ? 'spin' : ''} />
-              {busy ? '更新中' : '更新行情'}
-            </button>
-          )}
+          {page !== 'data' &&
+            page !== 'screener' &&
+            page !== 'market' &&
+            page !== 'comparison' &&
+            page !== 'alpha' &&
+            page !== 'alpha-lab' && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => run('refresh')}
+                disabled={busy}
+              >
+                <Renew size={14} className={busy ? 'spin' : ''} />
+                {busy ? '更新中' : '更新行情'}
+              </button>
+            )}
         </div>
         {job && (
           <div className="job-banner" role="status">
@@ -996,6 +1116,37 @@ export default function App() {
           </div>
         ) : (
           <>
+            {page === 'alpha' && (
+              <AlphaDashboard
+                data={data}
+                locale={locale}
+                busy={busy}
+                onOpen={openStock}
+                onLab={() => navigate('alpha-lab')}
+                onNotice={setToast}
+                onScreener={(scope, strategy) => navigate('screener', { scope, strategy })}
+                onData={() => navigate('data')}
+                onRun={(scope) => void run('scan_all', scope)}
+                onAdded={() => load()}
+                onCompare={(symbols) => {
+                  setComparisonInitial(symbols)
+                  navigate('comparison')
+                }}
+              />
+            )}
+            {page === 'alpha-lab' && (
+              <DeferredContent
+                name={locale === 'en' ? 'Alpha Lab' : 'Alpha 實驗室'}
+                locale={locale}
+              >
+                <AlphaLab
+                  data={data}
+                  locale={locale}
+                  onOpen={openStock}
+                  onDashboard={() => navigate('alpha')}
+                />
+              </DeferredContent>
+            )}
             {page === 'overview' && (
               <Home
                 data={data}
@@ -1011,6 +1162,13 @@ export default function App() {
                 onOpen={openStock}
                 onScreener={() => navigate('screener', { scope: 'market', strategy: 'all' })}
                 onStrategy={(strategy) => navigate('screener', { scope: 'market', strategy })}
+                regime={
+                  <MarketRegime
+                    locale={locale}
+                    revision={data.revision}
+                    expectedSession={data.summary.expected_session}
+                  />
+                }
               />
             )}
             {page === 'portfolio' && (
@@ -1039,10 +1197,18 @@ export default function App() {
               />
             )}{' '}
             {page === 'strategies' && <Strategies data={data} />}
-            {page === 'comparison' && <Comparison data={data} onOpen={openStock} />}
+            {page === 'comparison' && (
+              <Comparison
+                data={data}
+                onOpen={openStock}
+                initialSymbols={comparisonInitial}
+                locale={locale}
+              />
+            )}
             {page === 'data' && (
               <DataPage
                 data={data}
+                locale={locale}
                 onRefresh={() => run('refresh')}
                 onResume={(scope) => run('resume', scope)}
                 busy={busy}
@@ -1133,29 +1299,15 @@ export default function App() {
       )}{' '}
       {help && (
         <Modal title="你的選股研究工作台" onClose={() => setHelp(false)}>
-          <div className="help-content">
-            <p>
-              先在「我的持股」管理代碼、股數與成本，再按「更新行情」下載日線。更新完成後會自動計算最近
-              60 個交易日的策略條件。
-            </p>
-            <p>
-              「每日選股」可切換日期與策略；點擊標的查看技術指標。「策略研究」提供三種單檔歷史回測，逐筆檢查交易與回撤。
-            </p>
-            <p>
-              面板目前為單一使用者的本地工作區，沒有券商串接或自動下單。新加入的股票在下載行情前不會有報價。
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
+          <DeferredContent name={locale === 'en' ? 'Guide' : '使用指南'} locale={locale}>
+            <AlphaHelp
+              locale={locale}
+              onNavigate={(destination) => {
                 setHelp(false)
-                navigate('data')
+                navigate(destination)
               }}
-            >
-              <Document size={16} />
-              查看資料來源與狀態
-            </button>
-          </div>
+            />
+          </DeferredContent>
         </Modal>
       )}{' '}
       {toast && (

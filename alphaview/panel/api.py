@@ -19,6 +19,10 @@ from .backups import router as backups_router
 from .risk import router as risk_router
 from .storage_maintenance import router as storage_router
 from . import comparison
+from .alpha_replay import router as alpha_replay_router
+from .alpha_basket import router as alpha_basket_router
+from .holding_fit import router as holding_fit_router
+from .market_regime import router as market_regime_router
 
 
 @asynccontextmanager
@@ -45,6 +49,10 @@ app.include_router(scheduler.router)
 app.include_router(risk_router)
 app.include_router(storage_router)
 app.include_router(comparison.router)
+app.include_router(alpha_replay_router)
+app.include_router(alpha_basket_router)
+app.include_router(holding_fit_router)
+app.include_router(market_regime_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 

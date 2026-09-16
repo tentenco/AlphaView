@@ -4,6 +4,8 @@ import { api, money, num } from './ui'
 import './comparison.css'
 import { ChartErrorBoundary } from './ChartErrorBoundary'
 import { comparisonDailyCsv, comparisonSummaryCsv } from './comparison-export'
+import type { Locale } from './locale'
+import { ComparisonBookmarks } from './ComparisonBookmarks'
 const ComparisonChart = lazy(() => import('./ComparisonChart'))
 export type ComparisonResult = {
   as_of: string
@@ -37,9 +39,13 @@ export type ComparisonResult = {
 export function Comparison({
   data,
   onOpen,
+  initialSymbols,
+  locale = 'zh-TW',
 }: {
   data: Overview
   onOpen: (symbol: string, scope?: Scope, asOf?: string) => void
+  initialSymbols?: string[]
+  locale?: Locale
 }) {
   const members = [
     ...data.positions,
@@ -48,7 +54,11 @@ export function Comparison({
     ),
   ]
   const [selected, setSelected] = useState<string[]>(() =>
-    members.slice(0, 2).map((member) => member.symbol),
+    initialSymbols
+      ? [...new Set(initialSymbols)]
+          .filter((symbol) => members.some((member) => member.symbol === symbol))
+          .slice(0, 5)
+      : members.slice(0, 2).map((member) => member.symbol),
   )
   const [windowSize, setWindowSize] = useState<60 | 120 | 252>(120)
   const [query, setQuery] = useState('')
@@ -156,6 +166,18 @@ export function Comparison({
           <p>選擇 2–5 檔已知標的，以相同起點比較調整收盤價的百分比變化。</p>
         </div>
       </div>
+      <ComparisonBookmarks
+        draft={{ symbols: selected, window: windowSize }}
+        result={result}
+        locale={locale}
+        busy={loading}
+        members={members.map((member) => member.symbol)}
+        onLoad={(setup) => {
+          setSelected(setup.symbols)
+          setWindowSize(setup.window)
+          setPickerOpen(true)
+        }}
+      />
       <section aria-labelledby="comparison-selection-title">
         <div className="section-heading">
           <h2 id="comparison-selection-title">比較標的</h2>

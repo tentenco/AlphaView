@@ -17,6 +17,7 @@ ENV/
 .kiro
 
 # 数据库文件
+data/
 data/*.db
 
 # 环境变量

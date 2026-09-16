@@ -4,7 +4,7 @@
 
 **Powered by [Tentenai.com](https://tentenai.com)** · [繁體中文使用指南](WEB_PANEL.md)
 
-AlphaView brings market screening, transparent technical signals, and historical backtests into one focused dashboard. Your positions and research stay in a local SQLite database. Quotes are daily market data, not a real-time trading feed. Stale valuations retain their dates and show coverage warnings; unclosed future quotes and unavailable daily changes remain blank.
+AlphaView brings market screening, transparent technical signals, and historical backtests into one focused dashboard. Positions and detailed notes stay in a local SQLite database; Alpha preferences and research collections stay in your browser. Quotes are daily market data, not a real-time trading feed. Stale valuations retain their dates and show coverage warnings; unclosed future quotes and unavailable daily changes remain blank.
 
 ![AlphaView market overview with data coverage and strategy breadth](docs/images/market-overview.png)
 
@@ -12,6 +12,11 @@ AlphaView brings market screening, transparent technical signals, and historical
 
 ## What you can do
 
+- **Start with Alpha Picks.** See four-strategy leaders and transparent weighted scores, inspect daily Alpha entries/exits, and switch between cards, a dense table, and an RSI/RPS map.
+- **Compare your own weight profiles.** Save named configurations and compare up to four against the same daily universe. Replay signals or simulate a hypothetical basket in Alpha Lab; settings stay separate from the homepage until explicitly applied.
+- **Connect candidates to your holdings.** Review portfolio alerts, set your own closing-price thresholds, model a single-stock funding scenario, and compare candidate returns with existing holdings using explicit pairwise sample coverage.
+- **Keep research moving.** Star candidates, track stages and review dates, export review dates to your calendar, save comparison groups and experiment summaries, and copy a dated research handoff for your agent. Compare matching experiment runs against a saved baseline and export their differences. Preview browser-research imports before replacing saved categories.
+- **Read the market temperature first.** A five-factor crash-risk score (Buffett indicator, Shiller CAPE, 10Y–2Y Treasury spread, benchmark 200-day deviation, Fear & Greed) adapted from the open-source US_Stock_Crash_Monitor model. Macro readings are entered by hand with their dates; the technical factor uses locally stored VOO/SPY/QQQ history. A missing enabled factor leaves the score unavailable, and three historical pre-crash scenarios are rescored with your weights.
 - **Discover candidates beyond your holdings.** Choose a separate candidate pool of up to 250, 500, or 1,000 liquid US-listed equities, including ADRs, retrieved in market-cap order. Requested and accepted counts are shown separately.
 - **Refine and reuse screens.** Filter by RSI, relative volume, RPS, price, and signal count; sort results, save named browser presets, and export every matching row to CSV.
 - **Follow daily changes.** Compare distinct stored dates; new matches, exits, missing data, and universe membership changes are labeled separately.
@@ -26,7 +31,7 @@ AlphaView brings market screening, transparent technical signals, and historical
 - **Maintain local storage.** Preview table usage and superseded scan snapshots, then explicitly confirm cleanup; the latest snapshot for each scope and date is retained.
 - **Inspect the data.** See quote dates, calendar-aware missing sessions, malformed OHLC, provider failures, and job progress. Retry selected symbols or cancel a job. Failed downloads preserve previously stored data; corrupt histories produce no research signals. Missing or invalid chart observations remain gaps, and incomplete daily P&L is shown as unavailable with coverage counts.
 
-The interface is in Traditional Chinese and uses a restrained dark design, keyboard search, responsive tables, and detailed stock views.
+The interface supports English and Traditional Chinese, opens in a restrained light theme, and includes persistent language and light/dark toggles, keyboard search, responsive tables, and detailed stock views.
 
 ## Local end-of-day schedule
 
@@ -85,6 +90,8 @@ Duplicate symbols or any invalid row block the entire import. Exported quote/com
 
 ## Research methodology
 
+**Alpha Picks** (`#alpha`) is the quick research dashboard: four-strategy leaders, configurable cross-strategy weights, transparent score contributions, held/watch/new labels, a local research shortlist, holding alerts, position scenarios, and offline HTML briefs. **Alpha Lab** (`#alpha-lab`) adds historical signal replay and a hypothetical basket experiment with next-open execution, net rebalancing, explicit costs, allocation logs, and saved experiment comparisons. Lab weights remain separate until you apply them to the homepage. See the [Alpha workflow and calculation guide](docs/alpha-research.md) for assumptions, storage, and API details.
+
 | Screen | Core rule |
 | --- | --- |
 | Turtle breakout | Close above the prior 20-day high, an up candle, and volume confirmation |
@@ -103,6 +110,8 @@ Each new scan stores the scanner engine version and input revision captured with
 Stock details show the source snapshot and withhold signals when its date or input revision does not match the viewed data. Signal-change reports compare strategy entries and exits only between snapshots with the same recorded input revision; unknown or different versions are marked unavailable, while membership additions and removals remain visible. Matching older snapshots can still be compared as historical records with an explicit warning. Open backtest reports are revalidated when the workspace data version changes.
 
 The [candidate comparison](docs/candidate-comparison.md) uses N+1 valid prices for N daily-return intervals and the same exact dates for every eligible stock. It does not shorten the period for recent listings, fill missing prices, or represent portfolio performance. Its adjusted-price series are not an independently reconstructed total-return dataset. Changes to inputs or calculation versions mark an open comparison for recalculation.
+
+The [market risk temperature](docs/market-regime.md) maps each factor to a 0–100 risk through fixed thresholds and combines them by weight-normalized sum (`alphaview-regime-v1`). It is a linear rule model with quarterly macro lag and user-entered readings; it describes historical reference positions, not crash timing, and never issues position advice. Readings stay in the browser and are excluded from workspace backups.
 
 A historical screen recomputes the current candidate universe on earlier dates; it is not a point-in-time index membership dataset and has selection/survivorship bias. Relative strength is a pool-relative ranking, not a rank across every US stock. Expanding or changing the universe can change RPS even when a stock’s price history is unchanged; compare the recorded universe as well as the signal. Research signals are not automated orders.
 

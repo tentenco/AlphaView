@@ -62,7 +62,7 @@ export function PriceChart({
           <XAxis
             dataKey="date"
             tickFormatter={(d) => d.slice(5)}
-            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
             axisLine={false}
             tickLine={false}
             minTickGap={48}
@@ -71,7 +71,7 @@ export function PriceChart({
             orientation="right"
             domain={['auto', 'auto']}
             tickFormatter={(v) => num(v, 0)}
-            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
             axisLine={false}
             tickLine={false}
             width={55}
@@ -139,7 +139,7 @@ export function EquityChart({
             axisLine={false}
             tickLine={false}
             minTickGap={65}
-            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
           />
           <YAxis
             orientation="right"
@@ -147,7 +147,7 @@ export function EquityChart({
             tickFormatter={(v) => `${num(v / 1000, 0)}k`}
             axisLine={false}
             tickLine={false}
-            tick={{ fill: 'var(--muted)', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
           />
           <Tooltip
             contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)' }}

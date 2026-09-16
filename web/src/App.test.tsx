@@ -38,6 +38,11 @@ const running = (): Overview => ({
 })
 beforeEach(() => {
   vi.useFakeTimers()
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('data-locale')
+  document.documentElement.lang = 'zh-TW'
+  document.documentElement.style.removeProperty('color-scheme')
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
   location.hash = '#overview'
   vi.stubGlobal('scrollTo', vi.fn())
@@ -62,6 +67,50 @@ async function flush() {
 }
 
 describe('workspace integration', () => {
+  it('switches between Traditional Chinese and English and persists the locale', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(empty())))
+    const view = render(<App />)
+    await flush()
+    expect(document.documentElement.lang).toBe('zh-TW')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }))
+    })
+    expect(document.documentElement.lang).toBe('en')
+    expect(localStorage.getItem('alphaview-locale')).toBe('en')
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0)
+    expect(screen.getByText('My Portfolio')).toBeTruthy()
+    expect(
+      screen.getByText('Track your holdings and find the next opportunity worth researching.'),
+    ).toBeTruthy()
+    view.unmount()
+    render(<App />)
+    await flush()
+    expect(document.documentElement.lang).toBe('en')
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '切換為繁體中文' }))
+    })
+    expect(document.documentElement.lang).toBe('zh-TW')
+    expect(screen.getAllByText('投資總覽').length).toBeGreaterThan(0)
+  })
+
+  it('starts in light mode and persists an explicit dark mode choice', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(empty())))
+    const view = render(<App />)
+    await flush()
+    expect(document.documentElement.dataset.theme).toBe('light')
+    fireEvent.click(screen.getByRole('button', { name: '切換為深色模式' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem('alphaview-theme')).toBe('dark')
+    expect(
+      screen.getByRole('button', { name: '切換為淺色模式' }).getAttribute('aria-pressed'),
+    ).toBe('true')
+    view.unmount()
+    render(<App />)
+    await flush()
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(screen.getByRole('button', { name: '切換為淺色模式' })).toBeTruthy()
+  })
+
   it('shows an actionable empty chart and recovers when the first symbol is added', async () => {
     let populated = false
     vi.stubGlobal(

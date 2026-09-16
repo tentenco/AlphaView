@@ -1,10 +1,12 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from yfinance.scrapers.history import HistoryMetadata
 
 from alphaview.panel import api, market, store
 
@@ -70,6 +72,37 @@ def ticker(metadata):
     return FakeTicker()
 
 
+def lazy_metadata(values):
+    return HistoryMetadata(SimpleNamespace(
+        _history_metadata=values,
+        _load_history_metadata_trading_periods=lambda: pytest.fail('Unneeded intraday metadata request'),
+    ))
+
+
+@pytest.mark.parametrize('wrapper', [dict, lazy_metadata])
+def test_fetch_accepts_provider_metadata_without_loading_intraday_fields(wrapper):
+    metadata=wrapper(dict(currency='USD',longName='Synthetic company',exchangeName='NMS'))
+    with patch('yfinance.Ticker',return_value=ticker(metadata)),patch.object(market,'latest_completed_session',return_value='2026-09-04'):
+        assert market.fetch_symbol('SYNTH')['rows']==1
+    dataset=store.dataset_rows()[0]
+    assert dataset['name']=='Synthetic company'
+    assert dataset['exchange']=='NMS' and dataset['currency']=='USD'
+    assert dataset['status']=='ok' and dataset['error'] is None
+    assert store.history('SYNTH').iloc[-1].close==100
+
+
+@pytest.mark.parametrize('metadata', [None, ['USD'], [('currency','USD')], 'USD', 42,
+                                      lazy_metadata(dict(currency='EUR',longName='Synthetic company'))])
+def test_bad_metadata_preserves_previous_prices(metadata):
+    with store.connect() as db:
+        db.execute("INSERT INTO bars VALUES ('SYNTH','2026-09-03',100,101,99,100,100,1000)")
+    original=store.history('SYNTH')
+    with patch('yfinance.Ticker',return_value=ticker(metadata)),pytest.raises(ValueError):
+        market.fetch_symbol('SYNTH')
+    pd.testing.assert_frame_equal(store.history('SYNTH'),original)
+    assert store.dataset_rows()==[]
+
+
 def test_fetch_optional_name_and_exchange_are_safe_without_price_invention():
     with patch('yfinance.Ticker',return_value=ticker(dict(currency='USD',longName={'bad':1},shortName=' Valid name ',exchangeName={'bad':1}))),patch.object(market,'latest_completed_session',return_value='2026-09-04'):
         assert market.fetch_symbol('SYNTH')['rows']==1
@@ -78,9 +111,10 @@ def test_fetch_optional_name_and_exchange_are_safe_without_price_invention():
     assert store.history('SYNTH').iloc[-1].close==100
 
 
-def test_spcx_missing_typed_name_cannot_confirm_instrument_identity():
+@pytest.mark.parametrize('wrapper', [dict, lazy_metadata])
+def test_spcx_missing_typed_name_cannot_confirm_instrument_identity(wrapper):
     with store.connect() as db:
         db.execute("INSERT INTO bars VALUES ('SPCX','2026-09-03',100,101,99,100,100,1000)")
-    with patch('yfinance.Ticker',return_value=ticker(dict(currency='USD',longName={'bad':1}))),pytest.raises(ValueError,match='身分待確認'):
+    with patch('yfinance.Ticker',return_value=ticker(wrapper(dict(currency='USD',longName={'bad':1})))),pytest.raises(ValueError,match='身分待確認'):
         market.fetch_symbol('SPCX')
     assert store.history('SPCX').date.tolist()==['2026-09-03']

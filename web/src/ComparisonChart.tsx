@@ -10,7 +10,13 @@ import {
 } from 'recharts'
 import { num } from './ui'
 import type { ComparisonResult } from './Comparison'
-const COLORS = ['#54cba0', '#82b7ff', '#e0ba70', '#c79ae8', '#ec9292']
+const COLORS = [
+  'var(--series-0)',
+  'var(--series-1)',
+  'var(--series-2)',
+  'var(--series-3)',
+  'var(--series-4)',
+]
 export default function ComparisonChart({ result }: { result: ComparisonResult }) {
   const eligible = result.series.filter((series) => series.eligible)
   const points = new Map(
@@ -33,21 +39,25 @@ export default function ComparisonChart({ result }: { result: ComparisonResult }
     >
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={data} margin={{ top: 10, right: 18, bottom: 8, left: 4 }}>
-          <CartesianGrid vertical={false} stroke="#29312d" />
+          <CartesianGrid vertical={false} stroke="var(--line)" />
           <XAxis
             dataKey="date"
             tickFormatter={(value) => String(value).slice(5)}
             minTickGap={40}
-            tick={{ fill: '#a2aaa5', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
           />
           <YAxis
             tickFormatter={(value) => `${num(Number(value), 0)}%`}
-            tick={{ fill: '#a2aaa5', fontSize: 11 }}
+            tick={{ fill: 'var(--muted)', fontSize: 'var(--type-meta)' }}
             width={58}
           />
           <Tooltip
             formatter={(value) => `${num(Number(value))}%`}
-            contentStyle={{ background: '#151b18', border: '1px solid #34403a', color: '#e8eceb' }}
+            contentStyle={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              color: 'var(--text)',
+            }}
           />
           <Legend />
           {eligible.map((series, index) => (

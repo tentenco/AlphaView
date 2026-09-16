@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { ArrowRight, Time } from '@carbon/icons-react'
 import type { Overview, Scope } from './types'
@@ -10,11 +11,13 @@ export function MarketOverview({
   onStrategy,
   onOpen,
   onScreener,
+  regime,
 }: {
   data: Overview
   onStrategy: (strategy: string) => void
   onOpen: (symbol: string, scope: Scope, asOf?: string) => void
   onScreener: () => void
+  regime?: ReactNode
 }) {
   const scan = data.market_scan
   const model = scan ? marketOverview(scan, data.strategies) : null
@@ -38,6 +41,7 @@ export function MarketOverview({
           前往市場選股 <ArrowRight size={16} />
         </button>
       </div>
+      {regime}
       {!scan || !model ? (
         <div className="empty-state">
           尚無市場選股快照。請先執行市場選股，完成後即可查看股票池概況。
