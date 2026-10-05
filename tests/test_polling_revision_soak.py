@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from alphaview.panel import store
@@ -37,6 +38,34 @@ def test_stop_marker_prevents_transactions_and_never_opens_inherited_database(tm
     assert summary['cycles'] == 0
     assert summary['stop_reason'] == 'harness_stop_or_deadline'
     assert inherited.read_bytes() == b'untouched sentinel'
+
+
+def test_new_harness_uses_its_deadline_and_preserves_existing_receipts(tmp_path):
+    inherited = tmp_path / 'do-not-open.db'
+    inherited.write_bytes(b'untouched sentinel')
+    directory = tmp_path / 'new-run'
+    directory.mkdir()
+    deadline = datetime.now(timezone.utc) + timedelta(minutes=5)
+    (directory / 'state.json').write_text(json.dumps({'deadline': deadline.isoformat()}))
+    env = {**os.environ, 'PANEL_DB_PATH': str(inherited)}
+    script = Path(__file__).resolve().parents[1] / 'scripts/polling_revision_soak.py'
+    command = [sys.executable, str(script), '--directory', str(directory), '--seconds', '5', '--interval', '60']
+    completed = subprocess.run(command, env=env, capture_output=True, text=True, timeout=20)
+    assert completed.returncode == 0, completed.stderr
+    summary_path = directory / 'polling-revision-soak-summary.json'
+    receipt = summary_path.read_bytes()
+    manifest_path = directory / 'polling-revision-source-manifest.json'
+    manifest = manifest_path.read_bytes()
+    summary = json.loads(receipt)
+    assert summary['cycles'] == 1 and summary['failures'] == 0
+    assert summary['stop_reason'] == 'duration'
+    assert summary['synthetic_only'] and summary['network_disabled']
+    assert inherited.read_bytes() == b'untouched sentinel'
+    repeated = subprocess.run(command, env=env, capture_output=True, text=True, timeout=15)
+    assert repeated.returncode != 0
+    assert 'must not be overwritten' in repeated.stderr
+    assert summary_path.read_bytes() == receipt
+    assert manifest_path.read_bytes() == manifest
 
 
 def test_large_status_response_does_not_deadlock_child_pipe(tmp_path, monkeypatch):

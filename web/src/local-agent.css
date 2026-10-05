@@ -1,0 +1,134 @@
+.local-agent {
+  min-width: 0;
+}
+
+.local-agent-header,
+.local-agent-section-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.local-agent-runtime {
+  border-left: 2px solid var(--positive);
+  padding-left: 12px;
+}
+
+.local-agent-runtime.is-unavailable {
+  border-color: var(--amber);
+}
+
+.local-agent-source-info,
+.local-agent-meta {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.local-agent-progress,
+.local-agent-roles {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.local-agent-progress > li,
+.local-agent-roles > li {
+  min-width: 0;
+  border: 1px solid var(--line);
+  padding: 16px;
+}
+
+.local-agent-progress > li.is-running {
+  border-color: var(--positive);
+}
+
+.local-agent-progress strong,
+.local-agent-progress span {
+  display: block;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+}
+
+.local-agent-progress span {
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.local-agent-roles h3 {
+  margin: 0 0 16px;
+}
+
+.local-agent-roles ul {
+  padding-left: 18px;
+  font-size: var(--type-caption);
+  line-height: 1.8;
+}
+
+.local-agent-roles li,
+.local-agent-rule-checks li {
+  overflow-wrap: anywhere;
+}
+
+.local-agent-roles small {
+  display: block;
+  color: var(--muted);
+}
+
+.local-agent-json {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+}
+
+.local-agent-history button {
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.local-agent-rule-checks {
+  list-style: none;
+  padding: 0;
+  font-size: var(--type-caption);
+}
+
+.local-agent-rule-checks li {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  line-height: 1.7;
+}
+
+.local-agent-rule-checks strong {
+  margin-right: 12px;
+}
+
+.local-agent .agent-method summary {
+  cursor: pointer;
+}
+
+.agent-workspace td.local-agent-reason-cell {
+  white-space: normal;
+  min-width: 250px;
+}
+
+@media (max-width: 900px) {
+  .local-agent-roles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .local-agent-progress {
+    grid-template-columns: 1fr;
+  }
+}

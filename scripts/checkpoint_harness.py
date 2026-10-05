@@ -10,7 +10,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_ROOTS = {'alphaview', 'web', 'tests', 'docs', 'scripts'}
-ALLOWED_SUFFIXES = {'.py', '.ts', '.tsx', '.js', '.json', '.css', '.html', '.md', '.toml', '.lock', '.yaml', '.yml', '.txt', '.svg', '.png', '.jpg', '.webp', '.sh'}
+ALLOWED_SUFFIXES = {'.py', '.ts', '.tsx', '.js', '.json', '.css', '.html', '.md', '.toml', '.lock', '.yaml', '.yml', '.txt', '.svg', '.png', '.jpg', '.webp', '.sh', '.sql'}
 
 def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT)
@@ -47,7 +47,7 @@ def checkpoint(directory):
         'captured_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         'base_commit': git('rev-parse', 'HEAD').decode().strip(),
         'branch': git('branch', '--show-current').decode().strip(),
-        'scope': 'Changed source files in the current local workspace, including earlier theme and language edits. Not a standalone checkout or database backup. No automatic restore.',
+        'scope': 'Changed source files in the current local workspace. Not a standalone checkout or database backup. No automatic restore. Unfinished scaffolds are identified in the harness handoff.',
         'files': entries,
     }
     encoded = json.dumps(manifest, ensure_ascii=False, indent=2) + '\n'

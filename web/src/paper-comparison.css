@@ -1,0 +1,200 @@
+.paper-account-comparison {
+  min-width: 0;
+}
+.comparison-account-picker {
+  margin: 24px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+.comparison-account-picker legend {
+  padding: 0 8px;
+  font-size: var(--type-caption);
+}
+.comparison-account-picker legend span {
+  color: var(--muted);
+  margin-left: 10px;
+}
+.comparison-account-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.comparison-account-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  overflow-wrap: anywhere;
+  font-size: var(--type-caption);
+  line-height: 1.6;
+}
+.comparison-account-options input {
+  flex: 0 0 auto;
+  width: auto;
+  margin-top: 4px;
+  accent-color: var(--positive);
+}
+.comparison-date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  max-width: 560px;
+}
+.comparison-readonly,
+.comparison-result-heading > span {
+  font-size: var(--type-caption);
+  color: var(--muted);
+}
+.comparison-result-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.comparison-chart-empty {
+  border: 1px dashed var(--line);
+  padding: 26px;
+  margin: 24px 0;
+}
+.comparison-summary-scroll {
+  overflow: auto;
+  max-width: 100%;
+  margin: 22px 0 16px;
+  border: 1px solid var(--line);
+}
+.comparison-summary-scroll table {
+  width: 100%;
+}
+.comparison-summary-scroll th,
+.comparison-summary-scroll td {
+  min-width: 155px;
+  vertical-align: top;
+}
+.comparison-summary-scroll thead th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.comparison-summary-scroll small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.8;
+  font-weight: 400;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.comparison-summary-table tbody th {
+  text-align: left;
+  font-weight: 400;
+}
+.comparison-pairs > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 24px;
+  border-top: 1px solid var(--line);
+  padding: 15px 0;
+  font-size: var(--type-caption);
+}
+.comparison-pairs > div > span {
+  flex: 1 1 200px;
+  overflow-wrap: anywhere;
+}
+.comparison-pairs small {
+  color: var(--muted);
+}
+.comparison-account-detail {
+  margin-top: 20px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.paper-account-comparison summary {
+  cursor: pointer;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.paper-account-comparison .agent-method {
+  overflow-wrap: anywhere;
+}
+.comparison-normalized-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.comparison-grid {
+  stroke: var(--line);
+  stroke-dasharray: 3 5;
+}
+.comparison-baseline {
+  stroke: var(--muted);
+  stroke-dasharray: 5 4;
+  opacity: 0.5;
+}
+.comparison-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.comparison-series polyline {
+  fill: none;
+  stroke: var(--comparison-color);
+  stroke-width: 2;
+  stroke-dasharray: var(--comparison-dash, none);
+}
+.comparison-series circle {
+  fill: var(--comparison-color);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+.comparison-color-0 {
+  --comparison-color: var(--positive);
+}
+.comparison-color-1 {
+  --comparison-color: var(--blue);
+  --comparison-dash: 7 3;
+}
+.comparison-color-2 {
+  --comparison-color: var(--amber);
+  --comparison-dash: 3 3;
+}
+.comparison-color-3 {
+  --comparison-color: var(--negative);
+  --comparison-dash: 9 3 2 3;
+}
+.comparison-color-4 {
+  --comparison-color: var(--text);
+  --comparison-dash: 2 4;
+}
+.comparison-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  font-size: var(--type-caption);
+}
+.comparison-chart-legend > span {
+  overflow-wrap: anywhere;
+}
+.comparison-chart-legend i {
+  display: inline-block;
+  width: 20px;
+  border-top: 3px solid var(--comparison-color);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.comparison-chart-legend small {
+  color: var(--muted);
+}
+@media (max-width: 680px) {
+  .comparison-account-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .comparison-account-options,
+  .comparison-date-fields {
+    grid-template-columns: 1fr;
+  }
+  .comparison-date-fields {
+    gap: 0;
+  }
+}

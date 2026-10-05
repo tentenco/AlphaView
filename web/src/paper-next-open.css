@@ -1,0 +1,118 @@
+.paper-next-open {
+  min-width: 0;
+}
+
+.next-open-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.next-open-schedule {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  margin: 20px 0;
+}
+
+.next-open-schedule > div {
+  min-width: 0;
+  padding: 16px;
+  border-right: 1px solid var(--line);
+}
+
+.next-open-schedule > div:last-child {
+  border-right: 0;
+}
+
+.next-open-schedule span,
+.next-open-schedule strong {
+  display: block;
+  line-height: 1.7;
+  font-size: var(--type-caption);
+  overflow-wrap: anywhere;
+}
+
+.next-open-schedule span {
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.next-open-consent {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  margin: 22px 0;
+  font-size: var(--type-caption);
+  line-height: 1.8;
+}
+
+.next-open-consent input {
+  margin-top: 5px;
+  flex-shrink: 0;
+  accent-color: var(--positive);
+}
+
+.next-open-authorization {
+  border-left: 2px solid var(--amber);
+  padding: 10px 14px;
+}
+
+.next-open-meta {
+  color: var(--muted);
+  line-height: 1.8;
+  font-size: var(--type-caption);
+  overflow-wrap: anywhere;
+}
+
+.next-open-history button {
+  max-width: 220px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.next-open-events {
+  padding-left: 20px;
+  font-size: var(--type-caption);
+  line-height: 1.8;
+}
+
+.next-open-events li {
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+
+.next-open-events time {
+  color: var(--muted);
+  margin-right: 10px;
+}
+
+.next-open-json {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+}
+
+.paper-next-open details summary {
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .next-open-schedule {
+    grid-template-columns: 1fr;
+  }
+
+  .next-open-schedule > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .next-open-schedule > div:last-child {
+    border-bottom: 0;
+  }
+}

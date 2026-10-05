@@ -1,0 +1,152 @@
+.paper-scenarios {
+  min-width: 0;
+}
+
+.scenario-presets,
+.scenario-plans-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.scenario-presets > span,
+.scenario-presets small,
+.scenario-scope,
+.scenario-submit > span {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.scenario-plans-heading {
+  justify-content: space-between;
+  margin-top: 32px;
+}
+
+.scenario-plans-heading h3 {
+  margin: 0;
+}
+
+.scenario-plans-heading h3 span {
+  font-weight: 400;
+  font-size: var(--type-caption);
+  color: var(--muted);
+  margin-left: 12px;
+}
+
+.scenario-plan-editors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.scenario-plan-editor {
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+
+.scenario-plan-editor legend {
+  padding: 0 8px;
+  font-size: var(--type-caption);
+  font-weight: 600;
+}
+
+.scenario-plan-editor > .agent-field {
+  margin-bottom: 16px;
+}
+
+.scenario-cash-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-caption);
+  margin-bottom: 16px;
+}
+
+.scenario-cash-choice input {
+  width: auto;
+  accent-color: var(--positive);
+}
+
+.scenario-submit {
+  align-items: center;
+  margin-top: 24px;
+}
+
+.scenario-result-scope {
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+
+.scenario-comparison-scroll {
+  border: 1px solid var(--line);
+  margin: 24px 0 16px;
+}
+
+.scenario-comparison-table {
+  width: 100%;
+}
+
+.scenario-comparison-table th,
+.scenario-comparison-table td {
+  min-width: 175px;
+}
+
+.scenario-comparison-table thead th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.scenario-comparison-table th small {
+  display: block;
+  font-weight: 400;
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.scenario-comparison-table tbody th {
+  font-weight: 400;
+  text-align: left;
+}
+
+.scenario-unavailable,
+.scenario-comparison-table th small.scenario-unavailable {
+  color: var(--amber);
+}
+
+.scenario-case {
+  border-top: 1px solid var(--line);
+  padding: 18px 0;
+  min-width: 0;
+}
+
+.scenario-case summary,
+.paper-scenarios .agent-method summary {
+  cursor: pointer;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.scenario-case .agent-reasons code {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.paper-scenarios .agent-method {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 680px) {
+  .scenario-plan-editors {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-presets small {
+    flex-basis: 100%;
+  }
+}

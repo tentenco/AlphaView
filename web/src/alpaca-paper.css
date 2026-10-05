@@ -1,0 +1,39 @@
+.alpaca-paper {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.alpaca-paper .section-heading {
+  flex-wrap: wrap;
+}
+.alpaca-paper .section-heading > div {
+  min-width: 0;
+  flex: 1 1 340px;
+}
+.alpaca-paper .actions {
+  flex-wrap: wrap;
+}
+.alpaca-paper input,
+.alpaca-paper select {
+  max-width: 100%;
+}
+.alpaca-paper .agent-metrics {
+  margin: 0;
+}
+.alpaca-paper .agent-metrics strong {
+  font-size: clamp(18px, 1.8vw, 28px);
+}
+.alpaca-paper .agent-panel {
+  min-width: 0;
+}
+.alpaca-meta {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.8;
+}
+.alpaca-connection-form {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 10px;
+}

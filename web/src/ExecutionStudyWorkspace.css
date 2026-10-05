@@ -1,0 +1,29 @@
+.execution-study-workspace,
+.execution-study-workspace-tools {
+  min-width: 0;
+  max-width: 100%;
+}
+.execution-study-workspace-description {
+  margin: 16px 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.execution-study-workspace button,
+.execution-study-workspace summary {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.execution-study-workspace .execution-volume-study,
+.execution-study-workspace .execution-limit-study {
+  border-top: 0;
+}
+@media (max-width: 480px) {
+  .execution-study-workspace-tools > .research-evidence-section > .research-evidence-section-body {
+    padding-inline: 8px;
+  }
+  .execution-study-workspace .research-evidence-navigation ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,84 @@
+.archive-preflight-records {
+  min-width: 0;
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+.archive-preflight-records > h5 {
+  font-size: var(--type-body);
+  margin: 0 0 12px;
+}
+.archive-preflight-record-filters {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(180px, 2fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+  min-width: 0;
+}
+.archive-preflight-record-filters label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.archive-preflight-record-filters input,
+.archive-preflight-record-filters select {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.archive-preflight-records button {
+  max-width: 100%;
+  height: auto;
+  min-height: 40px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.archive-preflight-record-counts {
+  font-variant-numeric: tabular-nums;
+}
+.archive-preflight-record-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.archive-preflight-record-pages span {
+  font-variant-numeric: tabular-nums;
+}
+.archive-preflight-records .archive-preflight-record-summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+.archive-preflight-record-summary > span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  max-width: calc(100% - 1.4em);
+  vertical-align: top;
+}
+.archive-preflight-record-summary code {
+  font-size: var(--type-caption);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.archive-preflight-record-id code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.archive-preflight-records .receipt-archive-record {
+  min-width: 0;
+  padding-block: 12px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 600px) {
+  .archive-preflight-record-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .archive-preflight-record-filters > button {
+    justify-self: start;
+  }
+}

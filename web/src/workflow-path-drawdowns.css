@@ -1,0 +1,93 @@
+.workflow-path-drawdowns {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-drawdowns .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-drawdowns button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  height: auto;
+}
+.path-drawdown-selector {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 16px 0;
+}
+.path-drawdown-selector select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.path-drawdown-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.path-drawdown-summary dt {
+  color: var(--muted);
+}
+.path-drawdown-summary dd {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+}
+.path-drawdown-curve {
+  margin: 20px 0;
+}
+.path-drawdown-curve svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.path-drawdown-curve text {
+  fill: currentColor;
+  font-size: 11px;
+}
+.drawdown-zero {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.drawdown-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.path-drawdown-curve figcaption {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-path-drawdowns .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-drawdowns th,
+.workflow-path-drawdowns td {
+  vertical-align: top;
+}
+.drawdown-open {
+  border-left: 3px solid currentColor;
+}
+.drawdown-open-row th {
+  font-weight: 700;
+}
+.workflow-path-drawdowns code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.workflow-path-drawdowns details {
+  margin: 16px 0;
+}
+@media (max-width: 600px) {
+  .path-drawdown-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

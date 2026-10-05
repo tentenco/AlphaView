@@ -65,6 +65,10 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
             db.execute("UPDATE jobs SET progress=? WHERE id=? AND status='running' AND cancel_requested=0", (message, job_id))
 
     try:
+        if kind == "corporate_action_refresh":
+            from .corporate_action_refresh import run_job
+            run_job(job_id, result, check_cancel, progress)
+            return
         check_cancel()
         if kind == "resume":
             market.resume_refresh(progress, scope=scope, check_cancel=check_cancel, report=result)
@@ -136,10 +140,13 @@ def worker(job_id, kind, scope="portfolio", symbols=None, universe_limit=250):
             db.execute("UPDATE jobs SET status=?,finished_at=?,progress=?,result=?,error=NULL WHERE id=?",
                        ("partial" if partial else "completed", store.now(), summary, json.dumps(result, ensure_ascii=False), job_id))
     except JobCancelled:
+        cancellation_message = (
+            "公司行動重檢已取消；已完整保存的行情與回傳證據仍保留，帳本未調整；不代表異常已修復。"
+            if kind == "corporate_action_refresh" else
+            "作業已取消；已完成下載及完整發布的選股紀錄保留，未完成計算不會發布。")
         with store.connect() as db:
             db.execute("UPDATE jobs SET status='cancelled',finished_at=?,progress=?,result=?,error=NULL WHERE id=?",
-                       (store.now(), "作業已取消；已完成下載及完整發布的選股紀錄保留，未完成計算不會發布。",
-                        json.dumps(result, ensure_ascii=False), job_id))
+                       (store.now(), cancellation_message, json.dumps(result, ensure_ascii=False), job_id))
     except Exception as exc:
         with store.connect() as db:
             db.execute("UPDATE jobs SET status='failed',finished_at=?,error=?,result=? WHERE id=?",

@@ -1,0 +1,58 @@
+.workflow-path-attribution {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-attribution .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-attribution .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-attribution th,
+.workflow-path-attribution td {
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+.workflow-path-attribution tbody th span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: var(--type-meta);
+  font-weight: normal;
+}
+.workflow-path-attribution code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.workflow-attribution-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.workflow-attribution-totals dt {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-attribution-totals dd {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+}
+.workflow-attribution-day {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+}
+.workflow-attribution-day select {
+  max-width: 100%;
+}
+
+.workflow-path-attribution .actions .button {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

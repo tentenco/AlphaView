@@ -1,0 +1,56 @@
+.research-evidence-capacity {
+  min-width: 0;
+  max-width: 100%;
+}
+.research-evidence-capacity h4,
+.research-evidence-capacity h5,
+.research-evidence-capacity h6 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+}
+.research-evidence-capacity button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.research-evidence-capacity-context {
+  overflow-wrap: anywhere;
+}
+.research-evidence-capacity-family {
+  padding-top: 0.85rem;
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+.research-evidence-capacity-scopes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.research-evidence-capacity-scopes section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.research-evidence-capacity-scopes dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+}
+.research-evidence-capacity-scopes dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.research-evidence-capacity-scopes dd {
+  margin: 0.2rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.research-evidence-capacity :focus-visible {
+  outline: 2px solid var(--accent, #587dd0);
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .research-evidence-capacity-scopes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

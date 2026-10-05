@@ -1,0 +1,52 @@
+.workflow-path-receipts {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 20px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-receipts .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-receipts .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-receipts th,
+.workflow-path-receipts td {
+  vertical-align: top;
+}
+.workflow-path-receipts code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.workflow-path-receipt-detail {
+  margin-top: 24px;
+}
+.workflow-receipt-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.workflow-receipt-metrics dt {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-receipt-metrics dd {
+  margin: 6px 0 0;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.workflow-receipt-chart {
+  margin: 20px 0;
+  color: var(--text);
+}
+.workflow-receipt-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.workflow-receipt-chart figcaption {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}

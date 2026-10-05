@@ -1,0 +1,126 @@
+.workflow-path-monthly {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-monthly .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-monthly button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.path-monthly-selector {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 16px 0;
+}
+.path-monthly-selector select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.path-monthly-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.path-monthly-summary dt {
+  color: var(--muted);
+}
+.path-monthly-summary dd {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+}
+.path-monthly-years {
+  margin: 24px 0;
+  min-width: 0;
+}
+.path-monthly-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 24px;
+  padding: 0;
+  list-style: none;
+}
+.path-monthly-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-top-width: 3px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+.path-monthly-grid strong {
+  font-variant-numeric: tabular-nums;
+}
+.path-monthly-grid span,
+.path-monthly-grid small {
+  font-size: var(--type-caption);
+  line-height: 1.4;
+}
+.path-monthly-grid .monthly-positive {
+  border-top-color: var(--positive);
+}
+.path-monthly-grid .monthly-negative {
+  border-top-color: var(--negative);
+}
+.monthly-positive strong {
+  color: var(--positive);
+}
+.monthly-negative strong {
+  color: var(--negative);
+}
+.path-monthly-grid .monthly-unavailable {
+  color: var(--muted-strong);
+  background: var(--background);
+}
+.monthly-partial {
+  font-weight: 700;
+}
+.workflow-path-monthly .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-monthly th,
+.workflow-path-monthly td {
+  vertical-align: top;
+}
+.workflow-path-monthly td {
+  font-variant-numeric: tabular-nums;
+}
+.workflow-path-monthly code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.workflow-path-monthly details {
+  margin: 16px 0;
+}
+@media (max-width: 1100px) {
+  .path-monthly-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .path-monthly-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .path-monthly-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 360px) {
+  .path-monthly-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

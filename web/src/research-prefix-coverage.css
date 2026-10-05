@@ -1,0 +1,68 @@
+.research-prefix-coverage {
+  min-width: 0;
+}
+.research-prefix-coverage p,
+.research-prefix-coverage li {
+  overflow-wrap: anywhere;
+}
+.prefix-coverage-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  margin: 16px 0;
+  border: 1px solid var(--border, #d7dce1);
+  border-radius: 8px;
+}
+.prefix-coverage-dates label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.prefix-coverage-dates input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.research-prefix-coverage .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.research-prefix-coverage button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.prefix-coverage-result {
+  margin-top: 18px;
+}
+.prefix-coverage-result details {
+  margin-top: 12px;
+}
+.prefix-coverage-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.prefix-coverage-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.prefix-coverage-table th,
+.prefix-coverage-table td {
+  padding: 7px;
+  text-align: left;
+  vertical-align: top;
+}
+.prefix-coverage-fingerprint {
+  overflow-wrap: anywhere;
+  max-width: 220px;
+  font-family: monospace;
+  font-size: 12px;
+}
+@media (max-width: 420px) {
+  .prefix-coverage-dates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

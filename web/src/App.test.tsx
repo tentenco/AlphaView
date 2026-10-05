@@ -4,6 +4,45 @@ import App from './App'
 import { deferred, overview, position, response } from './test/fixtures'
 import type { Overview } from './types'
 
+const alphaChunk = vi.hoisted(() => {
+  let release: () => void = () => {}
+  let markLoaded: () => void = () => {}
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const loaded = new Promise<void>((resolve) => {
+    markLoaded = resolve
+  })
+  return {
+    requests: 0,
+    ready: false,
+    pending,
+    loaded,
+    release: () => release(),
+    markLoaded: () => markLoaded(),
+  }
+})
+vi.mock('./AlphaDashboard', () => {
+  alphaChunk.requests++
+  alphaChunk.markLoaded()
+  return {
+    AlphaDashboard: ({ onData }: { onData: () => void }) => {
+      if (!alphaChunk.ready) throw alphaChunk.pending
+      return (
+        <section aria-label="Synthetic dashboard route">
+          <h1>Alpha Picks</h1>
+          <button onClick={onData}>Dashboard data action</button>
+        </section>
+      )
+    },
+  }
+})
+vi.mock('./AgentPortfolio', () => ({
+  AgentPortfolio: () => (
+    <section aria-label="Synthetic portfolio route">Portfolio route ready</section>
+  ),
+}))
+
 vi.mock('./Charts', () => ({ PriceChart: () => <div>Chart ready</div>, Sparkline: () => null }))
 vi.mock('./Research', () => ({
   Strategies: () => null,
@@ -65,6 +104,68 @@ afterEach(() => {
 async function flush() {
   await act(async () => {})
 }
+
+describe('route-demand Alpha Picks', () => {
+  it('does not load the dashboard on a direct Agent route and preserves deferred default-alpha startup', async () => {
+    vi.useRealTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => response(empty())),
+    )
+    location.hash = '#agent-portfolio?account=synthetic-account&tab=risk'
+    const direct = render(<App />)
+    await flush()
+    await act(async () => {
+      await vi.dynamicImportSettled()
+    })
+    expect(await screen.findByRole('region', { name: 'Synthetic portfolio route' })).toBeTruthy()
+    expect(alphaChunk.requests).toBe(0)
+    direct.unmount()
+    location.hash = ''
+    render(<App />)
+    await flush()
+    await act(async () => {
+      await alphaChunk.loaded
+    })
+    expect(alphaChunk.requests).toBe(1)
+    expect(screen.getByText('正在載入Alpha Picks…').getAttribute('role')).toBe('status')
+    expect(screen.queryByRole('heading', { name: /Alpha Picks/ })).toBeNull()
+    await act(async () => {
+      alphaChunk.ready = true
+      alphaChunk.release()
+    })
+    expect(screen.getByRole('heading', { name: /Alpha Picks/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '投資總覽' }))
+    await flush()
+    expect(screen.getByText('先到「我的持股」新增觀察標的，再更新行情查看走勢。')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Alpha Picks' }))
+    await flush()
+    expect(screen.getByRole('heading', { name: /Alpha Picks/ })).toBeTruthy()
+    expect(alphaChunk.requests).toBe(1)
+  })
+
+  it('can retry failed workspace data and still open the default dashboard', async () => {
+    vi.useRealTimers()
+    alphaChunk.ready = true
+    alphaChunk.release()
+    location.hash = ''
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Synthetic offline'))
+      .mockResolvedValue(response(empty()))
+    vi.stubGlobal('fetch', fetcher)
+    render(<App />)
+    await flush()
+    expect(screen.getByRole('alert').textContent).toContain('Synthetic offline')
+    fireEvent.click(screen.getByRole('button', { name: '重試' }))
+    await flush()
+    await act(async () => {
+      await vi.dynamicImportSettled()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(await screen.findByRole('heading', { name: /Alpha Picks/ })).toBeTruthy()
+  })
+})
 
 describe('workspace integration', () => {
   it('switches between Traditional Chinese and English and persists the locale', async () => {
@@ -287,6 +388,9 @@ describe('market expansion job plumbing', () => {
     render(<App />)
     await flush()
     fireEvent.click(screen.getByRole('button', { name: '每日選股' }))
+    await act(async () => {
+      await vi.dynamicImportSettled()
+    })
     await flush()
     fireEvent.change(screen.getByRole('combobox', { name: '股票池上限' }), {
       target: { value: '500' },

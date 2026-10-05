@@ -1,0 +1,26 @@
+.integrity-receipts {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 20px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.integrity-receipts .actions {
+  flex-wrap: wrap;
+}
+.integrity-receipt-detail {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+.integrity-receipts code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.integrity-receipts .table-scroll {
+  max-width: 100%;
+}
+.integrity-receipts td,
+.integrity-receipts th {
+  vertical-align: top;
+}

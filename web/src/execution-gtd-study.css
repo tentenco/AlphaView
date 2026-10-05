@@ -1,0 +1,61 @@
+.execution-gtd-study {
+  min-width: 0;
+  padding: 18px 0;
+}
+.execution-gtd-study p,
+.execution-gtd-study li {
+  overflow-wrap: anywhere;
+}
+.execution-gtd-study fieldset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border, #d7dce1);
+  border-radius: 8px;
+}
+.execution-gtd-study label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.execution-gtd-study input,
+.execution-gtd-study select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.execution-gtd-study .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.execution-gtd-study button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.gtd-study-result article {
+  border-top: 1px solid var(--border, #d7dce1);
+  margin-top: 18px;
+  padding-top: 12px;
+}
+.gtd-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.gtd-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.gtd-table th,
+.gtd-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 7px;
+}
+.execution-gtd-study details {
+  margin-top: 16px;
+}

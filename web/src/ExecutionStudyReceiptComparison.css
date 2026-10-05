@@ -1,0 +1,149 @@
+.execution-study-comparison {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.execution-study-comparison h5,
+.execution-study-comparison h6 {
+  font-size: 0.9rem;
+  margin: 0.6rem 0;
+}
+.execution-study-comparison-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+.execution-study-comparison-controls label {
+  display: grid;
+  gap: 0.3rem;
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+.execution-study-comparison-controls select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.execution-study-comparison button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.execution-study-comparison-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.8rem 0;
+}
+.execution-study-comparison-sides > div {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+.execution-study-comparison code {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+.execution-study-comparison p {
+  overflow-wrap: anywhere;
+}
+.execution-study-comparison pre {
+  max-width: 100%;
+  max-height: 22rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+.execution-study-comparison-order {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+  padding: 0.45rem 0;
+}
+.execution-study-comparison-order > summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  padding: 0.45rem 0;
+}
+.execution-study-comparison-order-heading {
+  display: inline-grid;
+  gap: 0.25rem;
+  max-width: calc(100% - 1.5rem);
+  vertical-align: top;
+}
+.execution-study-comparison-order-heading > span {
+  font-size: 0.8rem;
+}
+.execution-study-comparison-order-counts {
+  color: var(--muted);
+}
+.execution-study-comparison-order-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.execution-study-comparison-order-controls label {
+  display: grid;
+  flex: 1 1 16rem;
+  min-width: 0;
+  gap: 0.3rem;
+}
+.execution-study-comparison-order-controls input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.execution-study-comparison-order-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+.execution-study-comparison-order-pages span {
+  font-size: 0.8rem;
+}
+.execution-study-comparison-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.5rem;
+}
+.execution-study-comparison-metric {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.execution-study-comparison-metric > strong,
+.execution-study-comparison-metric > small {
+  grid-column: 1 / -1;
+}
+.execution-study-comparison-metric strong small {
+  font-weight: normal;
+}
+.execution-study-comparison-session {
+  padding: 0.5rem 0;
+}
+.execution-study-comparison :focus-visible {
+  outline: 2px solid var(--accent, #587dd0);
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .execution-study-comparison-sides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .execution-study-comparison-order-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

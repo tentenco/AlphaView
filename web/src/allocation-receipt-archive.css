@@ -1,0 +1,63 @@
+.allocation-receipt-archive {
+  min-width: 0;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.allocation-receipt-archive p,
+.allocation-receipt-archive code,
+.allocation-receipt-archive label,
+.allocation-receipt-archive summary {
+  overflow-wrap: anywhere;
+}
+.receipt-archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.allocation-receipt-archive button {
+  min-height: 40px;
+  max-width: 100%;
+  white-space: normal;
+}
+.receipt-archive-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-block: 24px;
+}
+.receipt-archive-draft > button {
+  justify-self: start;
+}
+.receipt-archive-draft input,
+.receipt-archive-draft textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.receipt-archive-draft textarea {
+  resize: vertical;
+  min-height: 120px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
+.receipt-archive-summary,
+.receipt-archive-preflight {
+  margin-top: 16px;
+}
+.receipt-archive-record {
+  padding-block: 12px;
+  border-top: 1px solid var(--line);
+}
+.receipt-archive-record summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+@media (max-width: 600px) {
+  .receipt-archive-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

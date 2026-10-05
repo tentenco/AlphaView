@@ -56,6 +56,16 @@ def schema_manifest(data, database):
     data["manifest.json"] = json.dumps(manifest).encode()
 
 
+def remove_agent_schema_for_historical_fixture(db):
+    # Reconstruct the exact pre-Agent schema, rather than treating today's extra
+    # tables as part of the independently recorded historical signature.
+    for table in ("execution_study_receipts", "workflow_path_receipts", "local_agent_review_events", "research_integrity_receipts", "execution_sweep_events", "allocation_research_receipts", "corporate_action_coverage", "corporate_action_evidence", "broker_reconciliation_receipts", "inbox_attention_receipts", "paper_stop_cooldowns", "paper_position_stops", "execution_orders", "execution_submissions", "paper_circuit_breaker_events", "paper_circuit_breakers",
+                  "research_desk_runs", "research_desk_presets", "jev_decision_runs", "paper_symbol_policy_history", "paper_next_open_attempts", "paper_next_open_orders", "paper_account_origins", "local_agent_runs", "agent_automation_attempts", "agent_mandates", "paper_nav_snapshots",
+                  "paper_idempotency", "paper_ledger", "paper_proposals", "paper_holdings",
+                  "paper_accounts", "portfolio_agent_runs"):
+        db.execute(f"DROP TABLE {table}")
+
+
 def assert_aggregate_only_report(result, archive):
     # Privacy is a structural contract. A cost such as 123 may legitimately also
     # occur in a timestamp, byte count or digest, so substring exclusion cannot
@@ -130,6 +140,7 @@ def test_known_legacy_schema_requires_migration_without_executing_it(archive, tm
     database = tmp_path / "legacy.db"
     database.write_bytes(data["alphaview.db"])
     with sqlite3.connect(database) as db:
+        remove_agent_schema_for_historical_fixture(db)
         for name, in db.execute("SELECT name FROM sqlite_schema WHERE type='trigger'").fetchall():
             db.execute('DROP TRIGGER "' + name + '"')
         db.execute("DROP TABLE panel_revisions")
@@ -364,6 +375,7 @@ def test_early_nine_table_backup_requires_migration_and_schedule_unknown(archive
     database = tmp_path / "early.db"
     database.write_bytes(data["alphaview.db"])
     with sqlite3.connect(database) as db:
+        remove_agent_schema_for_historical_fixture(db)
         for name, in db.execute("SELECT name FROM sqlite_schema WHERE type='trigger'").fetchall():
             db.execute('DROP TRIGGER "' + name + '"')
         db.execute("ALTER TABLE scans DROP COLUMN input_revision")

@@ -6,7 +6,7 @@ from numbers import Real
 import numpy as np
 import pandas as pd
 
-from . import store
+from . import corporate_action_evidence, store
 from .sessions import latest_completed_session
 
 
@@ -99,8 +99,9 @@ def eligible_market_cap(value):
 
 def fetch_symbol(symbol):
     import yfinance as yf
+    expected_identity = corporate_action_evidence.capture_identity(symbol)
     ticker = yf.Ticker(symbol)
-    frame = ticker.history(period="2y", interval="1d", auto_adjust=False, actions=False,
+    frame = ticker.history(period="2y", interval="1d", auto_adjust=False, actions=True,
                            raise_errors=True, timeout=20)
     if frame.empty:
         raise ValueError("資料源未回傳日線；請確認代碼或稍後重試")
@@ -133,17 +134,10 @@ def fetch_symbol(symbol):
     frame = validate_bars(frame)
     records = [(symbol, row.date, *[float(getattr(row, col)) for col in columns])
                for row in frame.itertuples()]
-    with store.connect() as db:
-        db.execute("DELETE FROM bars WHERE symbol=?", (symbol,))
-        db.executemany("INSERT INTO bars VALUES (?,?,?,?,?,?,?,?)", records)
-        db.execute("""INSERT INTO datasets
-          (symbol,name,currency,exchange,fetched_at,last_date,bar_count,status,error)
-          VALUES (?,?,?,?,?,?,?,'ok',NULL) ON CONFLICT(symbol) DO UPDATE SET
-          name=excluded.name,currency=excluded.currency,exchange=excluded.exchange,
-          fetched_at=excluded.fetched_at,last_date=excluded.last_date,
-          bar_count=excluded.bar_count,status='ok',error=NULL""",
-          (symbol, name, currency, exchange, store.now(),
-           frame["date"].max(), len(frame)))
+    evidence = corporate_action_evidence.prepare(frame, yf.__version__)
+    corporate_action_evidence.publish(symbol, records,
+        {"name": name, "currency": currency, "exchange": exchange, "last_date": frame["date"].max()},
+        evidence, expected_identity)
     return {"symbol": symbol, "rows": len(frame), "last_date": frame["date"].max()}
 
 
@@ -251,9 +245,10 @@ def refresh(progress=lambda message: None, scope="portfolio", symbols=None, chec
             return {**fetch_symbol(symbol), "status": "ok"}
         except Exception as exc:
             error = str(exc)[:400]
-            with store.connect() as db:
-                db.execute("""INSERT INTO datasets (symbol,status,error) VALUES (?,'error',?)
-                  ON CONFLICT(symbol) DO UPDATE SET status='error',error=excluded.error""", (symbol, error))
+            if not isinstance(exc, corporate_action_evidence.PublicationConflict):
+                with store.connect() as db:
+                    db.execute("""INSERT INTO datasets (symbol,status,error) VALUES (?,'error',?)
+                      ON CONFLICT(symbol) DO UPDATE SET status='error',error=excluded.error""", (symbol, error))
             return {"symbol": symbol, "status": "error", "error": error}
 
     with ThreadPoolExecutor(max_workers=4 if scope == "market" else 1) as pool:
@@ -341,9 +336,10 @@ def resume_refresh(progress=lambda message: None, scope='portfolio', check_cance
             return {**fetch_symbol(symbol), 'status':'ok','action':'downloaded','resume_reason':reason}
         except Exception as exc:
             error = str(exc)[:400]
-            with store.connect() as db:
-                db.execute("""INSERT INTO datasets(symbol,status,error) VALUES (?,'error',?)
-                    ON CONFLICT(symbol) DO UPDATE SET status='error',error=excluded.error""",(symbol,error))
+            if not isinstance(exc, corporate_action_evidence.PublicationConflict):
+                with store.connect() as db:
+                    db.execute("""INSERT INTO datasets(symbol,status,error) VALUES (?,'error',?)
+                        ON CONFLICT(symbol) DO UPDATE SET status='error',error=excluded.error""",(symbol,error))
             return dict(symbol=symbol,status='error',action='downloaded',resume_reason=reason,error=error)
 
     with ThreadPoolExecutor(max_workers=4 if scope == 'market' else 1) as pool:

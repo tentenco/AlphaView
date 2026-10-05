@@ -1,0 +1,59 @@
+.strategy-bridge {
+  margin-top: 22px;
+}
+.bridge-status {
+  font-weight: 600;
+}
+.bridge-status.is-enter,
+.bridge-status.is-hold {
+  color: var(--positive);
+}
+.bridge-status.is-exit {
+  color: var(--negative);
+}
+.bridge-status.is-flat {
+  color: var(--muted);
+}
+.bridge-status.is-unavailable {
+  color: var(--amber);
+}
+.research-desk td.bridge-evidence {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 420px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.bridge-validation {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+}
+
+.bridge-validation.is-positive {
+  border-left-color: var(--positive);
+}
+
+.bridge-validation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bridge-status.is-pass {
+  color: var(--positive);
+}
+
+.bridge-status.is-fail {
+  color: var(--negative);
+}
+
+.bridge-ack {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 10px;
+}

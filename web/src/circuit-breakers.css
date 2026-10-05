@@ -1,0 +1,49 @@
+.circuit-breakers {
+  min-width: 0;
+}
+
+.circuit-breakers-state {
+  border: 1px solid var(--line);
+  color: var(--positive);
+  font-size: var(--type-caption);
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.circuit-breakers-state.is-tripped {
+  color: var(--negative);
+  border-color: var(--negative);
+}
+
+.circuit-breakers-checks > div.is-tripped strong {
+  color: var(--negative);
+}
+
+.circuit-breakers-checks > div.is-unavailable strong,
+.circuit-breakers-checks > div.is-disabled strong {
+  color: var(--muted);
+}
+
+.circuit-breakers-checks > div.is-pass strong {
+  color: var(--positive);
+}
+
+.circuit-breakers-form {
+  margin-top: 16px;
+}
+
+.circuit-breakers-checkbox {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  align-self: end;
+}
+
+.circuit-breakers-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+.circuit-breakers .agent-method summary {
+  cursor: pointer;
+}

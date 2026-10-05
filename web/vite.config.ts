@@ -7,6 +7,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (/node_modules\/(?:react|react-dom|scheduler)\//.test(id)) return 'react-vendor'
           if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-'))
             return 'charts'
         },

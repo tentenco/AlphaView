@@ -1,0 +1,118 @@
+.trading-agent {
+  min-width: 0;
+}
+.trading-agent-stages {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 22px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.trading-agent-stages > li {
+  border: 1px solid var(--line);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.trading-agent-stages strong,
+.trading-agent-stages span {
+  display: block;
+  font-size: var(--type-caption);
+  line-height: 1.6;
+}
+.trading-agent-stages span {
+  color: var(--muted);
+  margin-top: 6px;
+}
+.trading-agent-targets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.trading-agent-target {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.trading-agent-target.is-available {
+  border-left-color: var(--positive);
+}
+.trading-agent-target.is-blocked {
+  border-left-color: var(--amber);
+}
+.trading-agent-target strong,
+.trading-agent-target small {
+  display: block;
+  line-height: 1.6;
+}
+.trading-agent-target small {
+  color: var(--muted);
+  font-size: var(--type-caption);
+  overflow-wrap: anywhere;
+}
+.trading-agent-meta {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.trading-agent-acknowledge {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.trading-agent-acknowledge input {
+  margin-top: 4px;
+}
+.trading-agent-status {
+  font-weight: 600;
+}
+.trading-agent-status.is-terminal {
+  color: var(--positive);
+}
+.trading-agent-status.is-open {
+  color: var(--amber);
+}
+.trading-agent-status.is-failed {
+  color: var(--negative);
+}
+.trading-agent .agent-workspace td small,
+.trading-agent td small {
+  display: block;
+  color: var(--muted);
+  white-space: normal;
+  max-width: 260px;
+}
+@media (max-width: 1000px) {
+  .trading-agent-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trading-agent-targets {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .trading-agent-stages {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep the execution-scope notice readable without widening narrow screens. */
+@media (max-width: 600px) {
+  .trading-agent .section-heading {
+    flex-wrap: wrap;
+  }
+  .trading-agent .section-heading > div {
+    min-width: 0;
+  }
+  .trading-agent .agent-mode {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

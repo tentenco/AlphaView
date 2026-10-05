@@ -1,0 +1,73 @@
+.agent-report {
+  min-width: 0;
+}
+
+.agent-report-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agent-report-meta {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.agent-report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  border: 1px solid var(--line);
+  margin: 18px 0;
+}
+
+.agent-report-grid > div {
+  min-width: 0;
+  padding: 16px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.agent-report-grid span,
+.agent-report-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.agent-report-grid strong {
+  display: block;
+  font-size: clamp(18px, 1.8vw, 24px);
+  letter-spacing: -0.03em;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-report-list {
+  padding-left: 18px;
+  font-size: var(--type-caption);
+  line-height: 1.8;
+}
+
+.agent-report-list li {
+  overflow-wrap: anywhere;
+}
+
+.agent-report td.positive {
+  color: var(--positive);
+}
+
+.agent-report td.negative {
+  color: var(--negative);
+}
+
+@media (max-width: 720px) {
+  .agent-report-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-report-grid > div {
+    padding: 12px;
+  }
+}

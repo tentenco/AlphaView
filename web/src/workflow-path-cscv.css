@@ -1,0 +1,107 @@
+.workflow-path-cscv {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-cscv .actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.workflow-path-cscv .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-cscv table {
+  font-variant-numeric: tabular-nums;
+}
+.workflow-path-cscv th,
+.workflow-path-cscv td {
+  vertical-align: top;
+}
+.workflow-path-cscv tbody th span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: var(--type-meta);
+  font-weight: normal;
+}
+.workflow-path-cscv code,
+.workflow-path-cscv pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.cscv-receipt-list {
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  min-width: 0;
+  padding: 12px;
+}
+.cscv-receipt-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+.cscv-receipt-list input {
+  flex-shrink: 0;
+  margin-top: 4px;
+  width: auto;
+}
+.cscv-receipt-list small,
+.cscv-blocks span,
+.cscv-blocks small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.cscv-fractions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.cscv-fractions dt {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.cscv-fractions dd {
+  margin: 8px 0 0;
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.cscv-blocks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.cscv-blocks > div {
+  border: 1px solid var(--line);
+  padding: 12px;
+  min-width: 0;
+}
+.cscv-split-select {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+}
+.cscv-split-select select {
+  max-width: 100%;
+}
+.cscv-trial {
+  margin: 16px 0;
+}
+@media (max-width: 640px) {
+  .cscv-fractions,
+  .cscv-blocks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.workflow-path-cscv .actions button {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

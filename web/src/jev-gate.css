@@ -1,0 +1,117 @@
+.jev-gate {
+  min-width: 0;
+}
+
+.jev-gate-connection {
+  border-left: 2px solid var(--positive);
+  padding-left: 12px;
+}
+
+.jev-gate-connection.is-unconfigured {
+  border-color: var(--amber);
+}
+
+.jev-gate-meta {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.jev-gate-form {
+  margin-top: 16px;
+}
+
+.jev-gate-rulebook {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: grid;
+  gap: 12px;
+}
+
+.jev-gate-rulebook > li {
+  border: 1px solid var(--line);
+  padding: 12px 16px;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.jev-gate-rulebook strong {
+  display: block;
+}
+
+.jev-gate-rulebook code {
+  color: var(--muted);
+}
+
+.jev-gate-check {
+  display: inline-block;
+  min-width: 96px;
+  font-variant-numeric: tabular-nums;
+}
+
+.jev-gate-check.is-pass {
+  color: var(--positive);
+}
+
+.jev-gate-check.is-fail {
+  color: var(--negative);
+}
+
+.jev-gate-check.is-unavailable {
+  color: var(--muted);
+}
+
+.jev-gate-check small {
+  display: block;
+  color: var(--muted);
+}
+
+.jev-gate-decision.is-pass {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.jev-gate-decision.is-fail {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+.jev-gate-decision.is-unavailable {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.jev-gate-history button {
+  max-width: 240px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.jev-gate .agent-method summary {
+  cursor: pointer;
+}
+
+.jev-gate-json {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--type-caption);
+  line-height: 1.7;
+}
+
+.jev-gate-issues {
+  list-style: none;
+  padding: 0;
+  font-size: var(--type-caption);
+}
+
+.jev-gate-issues li {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}

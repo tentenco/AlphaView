@@ -23,11 +23,73 @@ from .alpha_replay import router as alpha_replay_router
 from .alpha_basket import router as alpha_basket_router
 from .holding_fit import router as holding_fit_router
 from .market_regime import router as market_regime_router
+from .paper_portfolio import router as paper_portfolio_router
+from .portfolio_agent import router as portfolio_agent_router
+from .paper_analytics import router as paper_analytics_router
+from .paper_reports import router as paper_reports_router
+from . import agent_automation
+from .portfolio_candidates import router as portfolio_candidates_router
+from .paper_scenarios import router as paper_scenarios_router
+from .paper_cost_sensitivity import router as paper_cost_sensitivity_router
+from .paper_comparison import router as paper_comparison_router
+from .portfolio_inbox import router as portfolio_inbox_router
+from .inbox_acknowledgements import router as inbox_acknowledgements_router
+from . import local_agent
+from .local_agent_review import router as local_agent_review_router
+from .paper_forks import router as paper_forks_router
+from . import paper_next_open
+from .alpaca_paper import router as alpaca_paper_router
+from .jev_decision import router as jev_decision_router
+from .research_desk import router as research_desk_router
+from .research_validation import router as research_validation_router
+from .research_integrity import router as research_integrity_router
+from .research_integrity_receipts import router as research_integrity_receipts_router
+from .research_prefix_coverage import router as research_prefix_coverage_router
+from .research_integrity_archive import router as research_integrity_archive_router
+from .workflow_validation import router as workflow_validation_router
+from .workflow_path_validation import router as workflow_path_validation_router
+from .workflow_path_costs import router as workflow_path_costs_router
+from .workflow_path_segments import router as workflow_path_segments_router
+from .workflow_path_attribution import router as workflow_path_attribution_router
+from .workflow_path_receipts import router as workflow_path_receipts_router
+from .workflow_path_receipt_comparison import router as workflow_path_receipt_comparison_router
+from .workflow_path_cscv import router as workflow_path_cscv_router
+from .workflow_path_drawdowns import router as workflow_path_drawdowns_router
+from .workflow_path_monthly import router as workflow_path_monthly_router
+from .workflow_path_receipt_archive import router as workflow_path_receipt_archive_router
+from .corporate_action_preview import router as corporate_action_preview_router
+from .corporate_action_history import router as corporate_action_history_router
+from .execution_volume_study import router as execution_volume_study_router
+from .execution_limit_study import router as execution_limit_study_router
+from .execution_gtd_study import router as execution_gtd_study_router
+from .execution_study_receipts import router as execution_study_receipts_router
+from .execution_study_receipt_comparison import router as execution_study_receipt_comparison_router
+from .execution_study_receipt_archive import router as execution_study_receipt_archive_router
+from .workflow_path_rolling import router as workflow_path_rolling_router
+from .workflow_path_trial_inventory import router as workflow_path_trial_inventory_router
+from .research_evidence_capacity import router as research_evidence_capacity_router
+from .allocation_research import router as allocation_research_router
+from .allocation_research_receipts import router as allocation_research_receipts_router
+from .allocation_receipt_archive import router as allocation_receipt_archive_router
+from .execution_sweep_history import router as execution_sweep_history_router
+from .workflow_comparison import router as workflow_comparison_router
+from .broker_reconciliation import router as broker_reconciliation_router
+from .execution import router as execution_router
+from .strategy_bridge import router as strategy_bridge_router
+from .position_stops import router as position_stops_router
+from .decision_ledger import router as decision_ledger_router
+from .corporate_actions import router as corporate_actions_router
+from .corporate_action_refresh import router as corporate_action_refresh_router
+from .regime_overlay import router as regime_overlay_router
+from .agent_report import router as agent_report_router
+from .circuit_breakers import router as circuit_breakers_router
+from .readiness import router as readiness_router
 
 
 @asynccontextmanager
 async def lifespan(app):
     store.init_db()
+    local_agent.recover_interrupted()
     if RUN_LOCK.acquire(blocking=False):
         try:
             with store.connect() as db:
@@ -35,9 +97,17 @@ async def lifespan(app):
         finally:
             RUN_LOCK.release()
     local_schedule = scheduler.Scheduler().start()
+    portfolio_schedule = agent_automation.Scheduler().start()
+    next_open_schedule = paper_next_open.Scheduler()
+    next_open_schedule.start()
+    from . import execution
+    reconcile_schedule = execution.Scheduler().start()
     try:
         yield
     finally:
+        await asyncio.to_thread(reconcile_schedule.stop)
+        await asyncio.to_thread(next_open_schedule.stop)
+        await asyncio.to_thread(portfolio_schedule.stop)
         await asyncio.to_thread(local_schedule.stop)
 
 
@@ -53,6 +123,67 @@ app.include_router(alpha_replay_router)
 app.include_router(alpha_basket_router)
 app.include_router(holding_fit_router)
 app.include_router(market_regime_router)
+app.include_router(paper_portfolio_router)
+app.include_router(portfolio_agent_router)
+app.include_router(paper_analytics_router)
+app.include_router(paper_reports_router)
+app.include_router(agent_automation.router)
+app.include_router(portfolio_candidates_router)
+app.include_router(paper_scenarios_router)
+app.include_router(paper_cost_sensitivity_router)
+app.include_router(paper_comparison_router)
+app.include_router(portfolio_inbox_router)
+app.include_router(inbox_acknowledgements_router)
+app.include_router(local_agent.router)
+app.include_router(local_agent_review_router)
+app.include_router(paper_forks_router)
+app.include_router(paper_next_open.router)
+app.include_router(alpaca_paper_router)
+app.include_router(jev_decision_router)
+app.include_router(research_desk_router)
+app.include_router(research_validation_router)
+app.include_router(research_integrity_router)
+app.include_router(research_integrity_receipts_router)
+app.include_router(research_prefix_coverage_router)
+app.include_router(research_integrity_archive_router)
+app.include_router(workflow_validation_router)
+app.include_router(workflow_path_validation_router)
+app.include_router(workflow_path_costs_router)
+app.include_router(workflow_path_segments_router)
+app.include_router(workflow_path_attribution_router)
+app.include_router(workflow_path_receipts_router)
+app.include_router(workflow_path_receipt_comparison_router)
+app.include_router(workflow_path_cscv_router)
+app.include_router(workflow_path_drawdowns_router)
+app.include_router(workflow_path_monthly_router)
+app.include_router(workflow_path_receipt_archive_router)
+app.include_router(corporate_action_preview_router)
+app.include_router(corporate_action_history_router)
+app.include_router(execution_volume_study_router)
+app.include_router(execution_limit_study_router)
+app.include_router(execution_gtd_study_router)
+app.include_router(execution_study_receipts_router)
+app.include_router(execution_study_receipt_comparison_router)
+app.include_router(execution_study_receipt_archive_router)
+app.include_router(workflow_path_rolling_router)
+app.include_router(workflow_path_trial_inventory_router)
+app.include_router(research_evidence_capacity_router)
+app.include_router(allocation_research_router)
+app.include_router(allocation_research_receipts_router)
+app.include_router(allocation_receipt_archive_router)
+app.include_router(execution_sweep_history_router)
+app.include_router(workflow_comparison_router)
+app.include_router(broker_reconciliation_router)
+app.include_router(agent_report_router)
+app.include_router(circuit_breakers_router)
+app.include_router(execution_router)
+app.include_router(strategy_bridge_router)
+app.include_router(position_stops_router)
+app.include_router(readiness_router)
+app.include_router(regime_overlay_router)
+app.include_router(decision_ledger_router)
+app.include_router(corporate_actions_router)
+app.include_router(corporate_action_refresh_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 

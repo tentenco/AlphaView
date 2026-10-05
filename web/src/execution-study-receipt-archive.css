@@ -1,0 +1,63 @@
+.execution-study-receipt-archive {
+  min-width: 0;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.execution-study-receipt-archive p,
+.execution-study-receipt-archive code,
+.execution-study-receipt-archive label,
+.execution-study-receipt-archive summary {
+  overflow-wrap: anywhere;
+}
+.execution-study-receipt-archive .receipt-archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.execution-study-receipt-archive button {
+  min-height: 40px;
+  max-width: 100%;
+  white-space: normal;
+}
+.execution-study-receipt-archive .receipt-archive-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-block: 24px;
+}
+.execution-study-receipt-archive .receipt-archive-draft > button {
+  justify-self: start;
+}
+.execution-study-receipt-archive .receipt-archive-draft input,
+.execution-study-receipt-archive .receipt-archive-draft textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.execution-study-receipt-archive .receipt-archive-draft textarea {
+  resize: vertical;
+  min-height: 120px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
+.execution-study-receipt-archive .receipt-archive-summary,
+.execution-study-receipt-archive .receipt-archive-preflight {
+  margin-top: 16px;
+}
+.execution-study-receipt-archive .receipt-archive-record {
+  padding-block: 12px;
+  border-top: 1px solid var(--line);
+}
+.execution-study-receipt-archive .receipt-archive-record summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+@media (max-width: 600px) {
+  .execution-study-receipt-archive .receipt-archive-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

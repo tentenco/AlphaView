@@ -17,53 +17,76 @@ import {
   Sun,
   ChartEvaluation,
   Compare,
+  Microscope,
   WarningAlt,
 } from '@carbon/icons-react'
 import type { Overview, Position, StockDetail, Scope } from './types'
 import { api, dateTime, Delta, Modal, money, num } from './ui'
 import { Portfolio, PortfolioTable, PositionEditor } from './Portfolio'
 import { StockModal, Strategies } from './Research'
-import { Screener } from './Screener'
 import type { UniverseLimit } from './Screener'
 import { DataQuality } from './DataQuality'
-import { MarketOverview } from './MarketOverview'
-import { MarketRegime } from './MarketRegime'
-import { WorkspaceBackup } from './WorkspaceBackup'
 import { ScheduleSettings } from './ScheduleSettings'
 import { StorageMaintenance } from './StorageMaintenance'
 import { ResumeUpdate } from './ResumeUpdate'
 import { ScanProvenanceNotice } from './ScanProvenanceNotice'
 import { PriceChart } from './Charts'
-import { Comparison } from './Comparison'
 import { applyTheme, readTheme, saveTheme, type Theme } from './theme'
 import { LocaleBridge, readLocale, type Locale } from './locale'
-import { AlphaDashboard } from './AlphaDashboard'
 import { HoldingAlertBell } from './HoldingAlertBell'
 import { AlphaPreferencesTransfer } from './AlphaPreferencesTransfer'
 import { DeferredContent } from './DeferredContent'
+// Alert bell and preferences styles are shared by routes outside Alpha Picks.
+import './alpha.css'
+const AlphaDashboard = lazy(() =>
+  import('./AlphaDashboard').then((module) => ({ default: module.AlphaDashboard })),
+)
 const AlphaHelp = lazy(() =>
   import('./AlphaHelp').then((module) => ({ default: module.AlphaHelp })),
 )
 const AlphaLab = lazy(() => import('./AlphaLab').then((module) => ({ default: module.AlphaLab })))
+const AgentPortfolio = lazy(() =>
+  import('./AgentPortfolio').then((module) => ({ default: module.AgentPortfolio })),
+)
+const ResearchDesk = lazy(() =>
+  import('./ResearchDesk').then((module) => ({ default: module.ResearchDesk })),
+)
+const Screener = lazy(() => import('./Screener').then((module) => ({ default: module.Screener })))
+const MarketOverview = lazy(() =>
+  import('./MarketOverview').then((module) => ({ default: module.MarketOverview })),
+)
+const MarketRegime = lazy(() =>
+  import('./MarketRegime').then((module) => ({ default: module.MarketRegime })),
+)
+const Comparison = lazy(() =>
+  import('./Comparison').then((module) => ({ default: module.Comparison })),
+)
+const WorkspaceBackup = lazy(() =>
+  import('./WorkspaceBackup').then((module) => ({ default: module.WorkspaceBackup })),
+)
 
 type Page =
   | 'alpha'
   | 'alpha-lab'
+  | 'agent-portfolio'
   | 'overview'
   | 'market'
   | 'screener'
   | 'portfolio'
   | 'strategies'
+  | 'research-desk'
   | 'comparison'
   | 'data'
 const nav = [
   { id: 'alpha', title: 'Alpha Picks', icon: Filter },
   { id: 'alpha-lab', title: 'Alpha 實驗室', icon: ChartEvaluation },
+  { id: 'agent-portfolio', title: 'Agent 投資組合', icon: PortfolioIcon },
   { id: 'overview', title: '投資總覽', icon: Dashboard },
   { id: 'market', title: '市場概況', icon: ChartEvaluation },
   { id: 'screener', title: '每日選股', icon: Filter },
   { id: 'portfolio', title: '我的持股', icon: PortfolioIcon },
   { id: 'strategies', title: '策略研究', icon: ChartLine },
+  { id: 'research-desk', title: '回測研究台', icon: Microscope },
   { id: 'comparison', title: '標的比較', icon: Compare },
   { id: 'data', title: '資料管理', icon: DataBase },
 ] as const
@@ -493,7 +516,9 @@ function DataPage({
         }
         refreshKey={data.jobs.map((job) => `${job.id}:${job.status}`).join(',')}
       />
-      <WorkspaceBackup />
+      <DeferredContent name={locale === 'en' ? 'Workspace backup' : '工作區備份'} locale={locale}>
+        <WorkspaceBackup />
+      </DeferredContent>
       <AlphaPreferencesTransfer locale={locale} />
       <StorageMaintenance />
       <DataQuality busy={busy} onRetry={onRetry} onOpen={onOpen} />
@@ -597,18 +622,22 @@ function DataPage({
                 </span>
                 <div>
                   <strong>
-                    {job.kind === 'scan_all'
-                      ? '整個工作區 · '
-                      : job.scope === 'market'
-                        ? '市場候選 · '
-                        : '我的清單 · '}
-                    {job.kind === 'resume'
-                      ? '續跑行情更新與掃描'
-                      : job.kind === 'retry'
-                        ? '指定標的重試與掃描'
-                        : job.kind === 'refresh'
-                          ? '行情更新與策略掃描'
-                          : '策略掃描'}
+                    {job.kind === 'corporate_action_refresh'
+                      ? '紙上帳戶 · '
+                      : job.kind === 'scan_all'
+                        ? '整個工作區 · '
+                        : job.scope === 'market'
+                          ? '市場候選 · '
+                          : '我的清單 · '}
+                    {job.kind === 'corporate_action_refresh'
+                      ? '單標的行情更新與公司行動重檢'
+                      : job.kind === 'resume'
+                        ? '續跑行情更新與掃描'
+                        : job.kind === 'retry'
+                          ? '指定標的重試與掃描'
+                          : job.kind === 'refresh'
+                            ? '行情更新與策略掃描'
+                            : '策略掃描'}
                   </strong>
                   <small>{job.error || job.progress}</small>
                 </div>
@@ -650,7 +679,7 @@ function DataPage({
 }
 
 export default function App() {
-  const initial = location.hash.slice(1) as Page
+  const initial = location.hash.slice(1).split('?')[0] as Page
   const [page, setPage] = useState<Page>(nav.some((n) => n.id === initial) ? initial : 'alpha')
   const [screenInitial, setScreenInitial] = useState<{ scope: Scope; strategy: string }>({
     scope: 'market',
@@ -806,7 +835,7 @@ export default function App() {
     }
     window.addEventListener('keydown', listener)
     const hash = () => {
-      const p = location.hash.slice(1)
+      const p = location.hash.slice(1).split('?')[0]
       if (nav.some((n) => n.id === p)) setPage(p as Page)
     }
     window.addEventListener('hashchange', hash)
@@ -1117,22 +1146,24 @@ export default function App() {
         ) : (
           <>
             {page === 'alpha' && (
-              <AlphaDashboard
-                data={data}
-                locale={locale}
-                busy={busy}
-                onOpen={openStock}
-                onLab={() => navigate('alpha-lab')}
-                onNotice={setToast}
-                onScreener={(scope, strategy) => navigate('screener', { scope, strategy })}
-                onData={() => navigate('data')}
-                onRun={(scope) => void run('scan_all', scope)}
-                onAdded={() => load()}
-                onCompare={(symbols) => {
-                  setComparisonInitial(symbols)
-                  navigate('comparison')
-                }}
-              />
+              <DeferredContent name="Alpha Picks" locale={locale}>
+                <AlphaDashboard
+                  data={data}
+                  locale={locale}
+                  busy={busy}
+                  onOpen={openStock}
+                  onLab={() => navigate('alpha-lab')}
+                  onNotice={setToast}
+                  onScreener={(scope, strategy) => navigate('screener', { scope, strategy })}
+                  onData={() => navigate('data')}
+                  onRun={(scope) => void run('scan_all', scope)}
+                  onAdded={() => load()}
+                  onCompare={(symbols) => {
+                    setComparisonInitial(symbols)
+                    navigate('comparison')
+                  }}
+                />
+              </DeferredContent>
             )}
             {page === 'alpha-lab' && (
               <DeferredContent
@@ -1147,6 +1178,14 @@ export default function App() {
                 />
               </DeferredContent>
             )}
+            {page === 'agent-portfolio' && (
+              <DeferredContent
+                name={locale === 'en' ? 'Portfolio Agent' : 'Agent 投資組合'}
+                locale={locale}
+              >
+                <AgentPortfolio locale={locale} revision={String(data.revision)} />
+              </DeferredContent>
+            )}
             {page === 'overview' && (
               <Home
                 data={data}
@@ -1157,19 +1196,21 @@ export default function App() {
               />
             )}{' '}
             {page === 'market' && (
-              <MarketOverview
-                data={data}
-                onOpen={openStock}
-                onScreener={() => navigate('screener', { scope: 'market', strategy: 'all' })}
-                onStrategy={(strategy) => navigate('screener', { scope: 'market', strategy })}
-                regime={
-                  <MarketRegime
-                    locale={locale}
-                    revision={data.revision}
-                    expectedSession={data.summary.expected_session}
-                  />
-                }
-              />
+              <DeferredContent name={locale === 'en' ? 'Market' : '市場概況'} locale={locale}>
+                <MarketOverview
+                  data={data}
+                  onOpen={openStock}
+                  onScreener={() => navigate('screener', { scope: 'market', strategy: 'all' })}
+                  onStrategy={(strategy) => navigate('screener', { scope: 'market', strategy })}
+                  regime={
+                    <MarketRegime
+                      locale={locale}
+                      revision={data.revision}
+                      expectedSession={data.summary.expected_session}
+                    />
+                  }
+                />
+              </DeferredContent>
             )}
             {page === 'portfolio' && (
               <Portfolio
@@ -1185,25 +1226,40 @@ export default function App() {
               />
             )}{' '}
             {page === 'screener' && (
-              <Screener
-                key={`${screenInitial.scope}-${screenInitial.strategy}`}
-                initialScope={screenInitial.scope}
-                initialStrategy={screenInitial.strategy}
-                data={data}
-                onRun={(scope, refresh, limit) => run(refresh ? 'refresh' : 'scan', scope, limit)}
-                busy={busy}
-                onOpen={openStock}
-                onAdded={() => load()}
-              />
+              <DeferredContent name={locale === 'en' ? 'Screener' : '每日選股'} locale={locale}>
+                <Screener
+                  key={`${screenInitial.scope}-${screenInitial.strategy}`}
+                  initialScope={screenInitial.scope}
+                  initialStrategy={screenInitial.strategy}
+                  data={data}
+                  onRun={(scope, refresh, limit) => run(refresh ? 'refresh' : 'scan', scope, limit)}
+                  busy={busy}
+                  onOpen={openStock}
+                  onAdded={() => load()}
+                />
+              </DeferredContent>
             )}{' '}
             {page === 'strategies' && <Strategies data={data} />}
-            {page === 'comparison' && (
-              <Comparison
-                data={data}
-                onOpen={openStock}
-                initialSymbols={comparisonInitial}
+            {page === 'research-desk' && (
+              <DeferredContent
+                name={locale === 'en' ? 'Research Desk' : '回測研究台'}
                 locale={locale}
-              />
+              >
+                <ResearchDesk
+                  locale={locale}
+                  holdings={data.positions.filter((p) => p.shares > 0).map((p) => p.symbol)}
+                />
+              </DeferredContent>
+            )}
+            {page === 'comparison' && (
+              <DeferredContent name={locale === 'en' ? 'Comparison' : '標的比較'} locale={locale}>
+                <Comparison
+                  data={data}
+                  onOpen={openStock}
+                  initialSymbols={comparisonInitial}
+                  locale={locale}
+                />
+              </DeferredContent>
             )}
             {page === 'data' && (
               <DataPage

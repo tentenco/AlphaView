@@ -1,0 +1,57 @@
+.corporate-actions-panel {
+  min-width: 0;
+}
+.corporate-actions-panel > .section-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.corporate-actions-panel > .section-heading > div {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.corporate-actions-panel > .section-heading > button {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+.corporate-actions-panel small,
+.corporate-actions-panel .muted,
+.corporate-actions-panel .notice,
+.corporate-actions-panel .research-note,
+.corporate-actions-panel h4 {
+  overflow-wrap: anywhere;
+}
+.corporate-actions-panel .table-scroll {
+  max-width: 100%;
+}
+.corporate-refresh-actions {
+  margin-block: 24px;
+}
+.corporate-refresh-actions > .notice {
+  display: block;
+}
+.corporate-refresh-actions > .notice > strong {
+  display: block;
+}
+.corporate-refresh-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.corporate-refresh-buttons button {
+  max-width: 100%;
+  min-height: 40px;
+}
+@media (max-width: 600px) {
+  .corporate-actions-panel > .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .corporate-actions-panel > .section-heading > button {
+    justify-self: start;
+    white-space: normal;
+  }
+  .corporate-refresh-buttons {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

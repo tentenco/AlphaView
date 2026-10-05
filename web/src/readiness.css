@@ -1,0 +1,64 @@
+.readiness-overall {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.readiness-overall.is-paper_ready {
+  color: var(--positive);
+}
+.readiness-overall.is-not_ready {
+  color: var(--amber);
+}
+.readiness-overall.is-blocked {
+  color: var(--negative);
+}
+.readiness-checks {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.readiness-checks li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.readiness-checks strong {
+  font-weight: 600;
+}
+.readiness-checks small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--type-caption);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.readiness-pill {
+  font-weight: 600;
+  font-size: var(--type-caption);
+  white-space: nowrap;
+}
+.readiness-pill.is-pass {
+  color: var(--positive);
+}
+.readiness-pill.is-fail {
+  color: var(--negative);
+}
+.readiness-pill.is-unavailable {
+  color: var(--amber);
+}
+.readiness-pill.is-not_applicable {
+  color: var(--muted);
+}
+@media (max-width: 600px) {
+  .readiness-checks li {
+    grid-template-columns: 1fr;
+  }
+  .readiness-checks small {
+    grid-column: 1;
+  }
+}

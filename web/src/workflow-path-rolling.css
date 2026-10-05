@@ -1,0 +1,77 @@
+.workflow-path-rolling {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-rolling .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-rolling button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.path-rolling-selector,
+.path-rolling-details label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 16px 0;
+}
+.workflow-path-rolling select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.path-rolling-summary,
+.path-rolling-extremes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.path-rolling-extremes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.workflow-path-rolling dt {
+  color: var(--muted);
+}
+.workflow-path-rolling dd {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.path-rolling-horizon {
+  margin: 24px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  min-width: 0;
+}
+.workflow-path-rolling .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-rolling th,
+.workflow-path-rolling td {
+  vertical-align: top;
+}
+.workflow-path-rolling td {
+  font-variant-numeric: tabular-nums;
+}
+.workflow-path-rolling caption {
+  text-align: start;
+  margin-bottom: 8px;
+}
+.workflow-path-rolling details {
+  margin: 16px 0;
+}
+.workflow-path-rolling code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .path-rolling-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,83 @@
+.execution-limit-study {
+  min-width: 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.execution-limit-study header,
+.execution-limit-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.execution-limit-study header h3 {
+  margin: 0;
+}
+.execution-limit-study header span {
+  color: var(--muted);
+  font-size: var(--type-caption);
+}
+.execution-limit-controls {
+  align-items: end;
+  margin: 16px 0;
+}
+.execution-limit-controls label {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+}
+.execution-limit-controls input {
+  width: 180px;
+  max-width: 100%;
+}
+.execution-limit-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.execution-limit-table table {
+  min-width: 920px;
+  width: 100%;
+}
+.execution-limit-table th,
+.execution-limit-table td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.execution-limit-study details {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.execution-limit-study dd {
+  margin: 4px 0 10px;
+}
+.execution-limit-study dt {
+  color: var(--muted);
+}
+.execution-limit-study [role='alert'] {
+  color: var(--negative);
+}
+
+.execution-limit-inputs {
+  min-width: 0;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.execution-limit-inputs label {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(100px, 180px);
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+.execution-limit-inputs input {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 480px) {
+  .execution-limit-inputs label {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,105 @@
+.research-evidence-navigation {
+  min-width: 0;
+  margin: 16px 0 20px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.research-evidence-navigation-label {
+  margin: 0 0 10px;
+  color: var(--muted-strong);
+  font-size: var(--type-compact);
+  font-weight: 600;
+}
+.research-evidence-navigation-disclosures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+  min-width: 0;
+}
+.research-evidence-navigation .research-evidence-navigation-disclosures button {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  height: auto;
+  align-items: center;
+  text-align: center;
+}
+.research-evidence-navigation ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.research-evidence-navigation li {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.research-evidence-navigation button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: start;
+  width: 100%;
+  flex: 1;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  border-radius: 7px;
+  background: var(--background);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.research-evidence-navigation button:enabled:hover {
+  border-color: var(--primary);
+}
+.research-evidence-navigation button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.research-evidence-navigation button:disabled {
+  cursor: default;
+  opacity: 1;
+  color: var(--muted-strong);
+}
+.research-evidence-navigation button > span {
+  font-weight: 600;
+}
+.research-evidence-navigation small {
+  display: block;
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+.research-evidence-navigation-reason {
+  margin: 4px 2px 0;
+}
+.research-evidence-navigation-target {
+  scroll-margin-block-start: var(--research-evidence-scroll-offset, 90px);
+}
+.research-evidence-navigation-focus:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 5px;
+  border-radius: 3px;
+}
+@media (max-width: 480px) {
+  .research-evidence-navigation {
+    padding: 10px;
+  }
+  .research-evidence-navigation ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 340px) {
+  .research-evidence-navigation ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

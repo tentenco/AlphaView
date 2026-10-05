@@ -51,3 +51,11 @@ Review `review.html` and approve the next priorities based on value and data rea
 這避免開發中修改 API 回應格式，造成長測父子程序比較不同版本的回應。既有失敗紀錄必須保留；新的通過紀錄不能抹除先前的逾時或其他失敗。未保存比較 payload 的歷史失敗，不得僅憑事後重現就宣稱原因已完全確定。
 
 Pipe 回傳必須先排空再等待 reader 子程序結束，否則資料超過作業系統緩衝大小時，子程序等待送出、父程序等待結束而互相卡住。本輪以真實子程序重現首次與固定來源長測的精確失敗輪次，並加入 64 KiB 狀態回傳回歸測試；緩衝大小是平台特性，不能假定所有系統都是本機測得的 512 bytes。每個子程序仍有期限與 finally kill／reap，避免測試本身無限等待。
+
+## 2026-10-01 Trading Agent Harness 的做法（Claude Code）
+
+- 主代理只做整合：schema 簽章、`AGENTS.md`／`docs/agent/project-map.md`／`docs/agent-portfolio.md`／`README.md`／`WEB_PANEL.md`、`state.json`、`events.jsonl`、檢閱頁與五道關卡；功能單元交給 fork 子代理平行開發（本輪 A–O 共 15 個），每個 fork 只跑自己的測試與鄰近套件，回報「交付／測試數／檔案／延後／主代理要加的文件行」。
+- 平行寫同一檔案的規則：只能在明確錨點後追加（`api.py` 的 router include、`paper_portfolio._build_preview` 的 hook 區），改既有語意的單元一次只派一個 fork；**同一輪只允許一個 fork 改 SQLite schema**，由它更新簽章登錄（`backup_preflight.KNOWN_SCHEMAS`、`tests/test_agent_schema_migration.py`）。
+- 速率限制中斷：fork 被 429 殺掉時以 SendMessage 原地恢復（transcript 仍在），恢復前先查磁碟上的半成品；中斷寫進 `state.json.interruptions` 並順延 deadline。
+- 中途跑一次全套回歸（不是每個單元都跑），只為抓跨 fork 的相互影響；本輪抓到一個對附加中繼資料的 byte-identical 假設。
+- 事件格式 `{at, unit, status: done|interruption, owner, evidence[], note}`；`scripts/render_trading_agent_review.py` 直接把完成事件做成交付表，`scripts/run_harness_gates.py` 產生 `gates.json`。

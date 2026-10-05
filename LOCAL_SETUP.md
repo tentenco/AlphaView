@@ -24,7 +24,7 @@ npm run build --prefix web
 git diff --check
 ```
 
-These are the shared completion gates in [CLAUDE.md](CLAUDE.md). `uv build` is an optional packaging check. Agents should also read the [Codex handoff](docs/codex-handoff-2026-09-16.md) before selecting unfinished work.
+These are the shared completion gates in [AGENTS.md](AGENTS.md). `uv build` is an optional packaging check. Agents should also read the [Codex handoff](docs/codex-handoff-2026-09-16.md) before selecting unfinished work.
 
 ## Optional A-share CLI
 

@@ -1,0 +1,63 @@
+.workflow-path-receipt-archive {
+  min-width: 0;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.workflow-path-receipt-archive p,
+.workflow-path-receipt-archive code,
+.workflow-path-receipt-archive label,
+.workflow-path-receipt-archive summary {
+  overflow-wrap: anywhere;
+}
+.workflow-path-receipt-archive .receipt-archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.workflow-path-receipt-archive button {
+  min-height: 40px;
+  max-width: 100%;
+  white-space: normal;
+}
+.workflow-path-receipt-archive .receipt-archive-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-block: 24px;
+}
+.workflow-path-receipt-archive .receipt-archive-draft > button {
+  justify-self: start;
+}
+.workflow-path-receipt-archive .receipt-archive-draft input,
+.workflow-path-receipt-archive .receipt-archive-draft textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.workflow-path-receipt-archive .receipt-archive-draft textarea {
+  resize: vertical;
+  min-height: 120px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
+.workflow-path-receipt-archive .receipt-archive-summary,
+.workflow-path-receipt-archive .receipt-archive-preflight {
+  margin-top: 16px;
+}
+.workflow-path-receipt-archive .receipt-archive-record {
+  padding-block: 12px;
+  border-top: 1px solid var(--line);
+}
+.workflow-path-receipt-archive .receipt-archive-record summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+@media (max-width: 600px) {
+  .workflow-path-receipt-archive .receipt-archive-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

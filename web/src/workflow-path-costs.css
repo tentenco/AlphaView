@@ -1,0 +1,51 @@
+.workflow-path-costs {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-costs .actions {
+  flex-wrap: wrap;
+}
+.workflow-cost-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.workflow-cost-inputs label,
+.workflow-cost-select {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.workflow-cost-inputs input,
+.workflow-cost-select select {
+  width: 100%;
+  min-width: 0;
+}
+.workflow-cost-select {
+  margin-block: 20px;
+  max-width: 420px;
+}
+.workflow-path-costs .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-costs td,
+.workflow-path-costs th {
+  vertical-align: top;
+}
+.workflow-cost-chart {
+  margin: 20px 0;
+  color: var(--text);
+}
+.workflow-cost-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.workflow-cost-chart figcaption {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-path-costs code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

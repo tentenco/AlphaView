@@ -1,0 +1,104 @@
+.execution-study-receipts {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.execution-study-receipts h5,
+.execution-study-receipts h6 {
+  font-size: 0.9rem;
+  margin: 0 0 0.6rem;
+}
+.execution-study-receipts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.65rem 0;
+}
+.execution-study-receipts button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.execution-study-receipts-list {
+  padding: 0;
+  list-style: none;
+}
+.execution-study-history-controls,
+.execution-study-history-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+.execution-study-history-controls label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.execution-study-history-controls input,
+.execution-study-history-controls select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.execution-study-history-totals dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.execution-study-history-totals dd {
+  margin: 0.25rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.execution-study-history-id {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.execution-study-receipts-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.execution-study-receipt-detail {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  margin-top: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.execution-study-receipt-detail dl {
+  margin: 0.6rem 0;
+  font-size: 0.8rem;
+}
+.execution-study-receipt-detail dd {
+  margin: 0.2rem 0 0.65rem;
+}
+.execution-study-receipt-detail code {
+  overflow-wrap: anywhere;
+}
+.execution-study-receipt-detail pre {
+  max-width: 100%;
+  max-height: 24rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+.execution-study-receipts :focus-visible {
+  outline: 2px solid var(--accent, #587dd0);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .execution-study-history-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

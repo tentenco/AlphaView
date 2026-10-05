@@ -26,8 +26,57 @@ KNOWN_SCHEMAS = {
     # Trusted dd82732 store.py independently initialized in an isolated fixture (9 tables).
     "512db8da99053d46db57a91fe4ca88d432f151578cd73d622abe9694bfcc1e2e": "migration_required",
     "93f7c92d0bc173ca2e96eac5cbd0cd0d26cd10997570d3dfda1e5f654e97b4c3": "migration_required",
-    "a161602153264d0616e2767c94ea3bdc605a99a785b31f78488200acb1f33264": "current",
+    "a161602153264d0616e2767c94ea3bdc605a99a785b31f78488200acb1f33264": "migration_required",
+    # 2026-09-20 paper v2, Agent runs/mandates and immutable NAV; isolated fresh
+    # initialization and the synthetic first-wave upgrade produce this signature.
+    "acf11d75ff97d50d0c89d4e246138eeb33f2bb6c655373c7c21b0010261ae0df": "migration_required",
+    # Adds durable local-only model analysis jobs; independently initialized fixture.
+    "f34cbbca37a775f46aaf4a82808f9f87ce5fbf6a88a7e77d85d8b38e886ea8c0": "migration_required",
+    # Adds explicit paper experiment lineage; new and upgraded synthetic databases match.
+    "1f9edd082a81c4247c801c7f9fd47e894d3f6bb7a63678c6f1a215a497d76bb1": "migration_required",
+    # Adds next-open paper orders and immutable processing attempts; isolated fresh/upgrade match.
+    "8a1f5650abe50f8d7df39196c8797646795777169cb33e4612cdde0ee64d1ad4": "migration_required",
+    # 2026-09-29 account symbol-policy history and optional rebalance triggers.
+    # Independent baseline-source upgrade and fresh synthetic initialization match.
+    "7c2b901a7ef5ea270f6a4824e1fcbd7b7758c7867af54f1a6200b61b1c4265cc": "migration_required",
     "f9ea8cd3a719e343144e88be36d112dcbaea30be8dbbe73eabf7a178c249a94d": "migration_required",
+    # 2026-09-30 durable Jev decision-gate runs (27 tables); fresh synthetic initialization
+    # and the trusted-source upgrade must produce this same signature.
+    "d3962ca5ab259839866ed06689d7c3281aa4a92f9d6a3a98ce0b2f6d67480af7": "migration_required",
+    # 2026-10-01 Research Desk presets and tournament history (29 tables); fresh synthetic
+    # initialization and the trusted-source upgrade must produce this same signature.
+    "957c00a16ff17dfb7579a39a4998d612f357ab506de834babd9b6c791b37ac87": "migration_required",
+    # 2026-10-01 Trading Agent harness: circuit breakers (policy + immutable events) and the
+    # execution layer (submissions + orders); 33 tables. Fresh synthetic initialization and the
+    # trusted-source upgrade must produce this same signature.
+    "da3b1c64dfe7d8fc20abd4d6b86e5a53eb43386bbcd9bdcf13cfd91b73fb5edd": "migration_required",
+    # Same round: agent_mandates.execution_target (paper_ledger | alpaca_paper) via the ALTER path.
+    "992006e885796ddc09649bc3ea895b6eccc890d8f46486ae94cbc22eef3a596a": "migration_required",
+    # Same round: agent_mandates.jev_gate_json (optional Jev gate policy) via the ALTER path.
+    "5a8044b5a1f31d8f26ae4f5b174e5685a5b98eb932f8d1644540353e8c7c9d34": "migration_required",
+    # Same round: position stops (policy + re-entry cooldowns); 35 tables.
+    "385c851e22933599d5902ab7a79ca6ab1ad1b73d5bbc81c5677e9209cf90d3f4": "migration_required",
+    # Same round: time-boxed mandate authorization (agent_mandates.expires_on, reauth_required,
+    # reauth_reason, lifecycle_json) via the ALTER path; still 35 tables.
+    "9f8db7b3b459ab3fde58554fc8c781678d16eda6e2977b14d6d25da01db2ca1c": "migration_required",
+    # 2026-10-03 inbox review receipts; metadata only, no input-revision triggers.
+    "bd3cdc172e3e2811d65984e85f2da25bb62b3e635b948fa5aa76fc88a904b919": "migration_required",
+    # 2026-10-03 versioned broker reconciliation receipt; 37 tables.
+    "78316155e8535270d39eda6333e6ed99164367298f4744cf1648a1ee2974a76b": "migration_required",
+    # 2026-10-03 immutable adapter action evidence and capture coverage; 39 tables.
+    "2518cbb3858f0342cea88fff807ee653ca4c9ce1ee1d2bfe11cfc109c7599db6": "migration_required",
+    # Immutable allocation research receipts (40 tables).
+    "b7a7add8694ff79cbbd4da5b08b9b5e9d1515d25ffdc099b6967e5e23720162f": "migration_required",
+    # Immutable execution sweep event history (41 tables).
+    "4e1f1eee546a88e99bfe65455c11516ab8b129d2e84bacd4c0c332f05895675b": "migration_required",
+    # 2026-10-05 immutable sampled-prefix diagnostic receipts (42 tables).
+    "4ff5095a0e505f6415dcdb4f57edebfc215beaa669fd922e67da323949154d76": "migration_required",
+    # 2026-10-05 independent local model review annotations (43 tables).
+    "64f9858587f7c7d8f18a86987ac16749d780f6bf018ae97f50b01cde2afd78de": "migration_required",
+    # 2026-10-05 immutable workflow path and cost receipts (44 tables).
+    "248d5b9375fc6f1af5dac6798de45bb4f952857add4d9f6e70a87fb774c70393": "migration_required",
+    # 2026-10-05 immutable execution study receipts (45 tables).
+    "e0421409f585846e07e71027e17b2383e0dbabf469cd3920d3176e1ee6efdb5e": "current",
 }
 
 

@@ -1,0 +1,51 @@
+.workflow-path-receipt-comparison {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-receipt-comparison .actions {
+  align-items: end;
+  flex-wrap: wrap;
+}
+.workflow-path-receipt-comparison label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.workflow-path-receipt-comparison select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.receipt-comparison-selectors,
+.receipt-comparison-observations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.workflow-path-receipt-comparison pre,
+.workflow-path-receipt-comparison code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.workflow-path-receipt-comparison pre {
+  margin: 0;
+  font-size: var(--type-meta);
+}
+.workflow-path-receipt-comparison th,
+.workflow-path-receipt-comparison td {
+  vertical-align: top;
+}
+.workflow-path-receipt-comparison .table-scroll {
+  max-width: 100%;
+}
+@media (max-width: 600px) {
+  .receipt-comparison-selectors,
+  .receipt-comparison-observations {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

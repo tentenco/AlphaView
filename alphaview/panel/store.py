@@ -156,6 +156,40 @@ def init_db():
             for operation in ("INSERT", "UPDATE", "DELETE"):
                 db.execute(f"CREATE TRIGGER IF NOT EXISTS inputs_{table}_{operation.lower()} AFTER {operation} ON {table} BEGIN UPDATE panel_revisions SET inputs_revision=inputs_revision+1 WHERE id=1; END")
 
+        # Local paper accounts and immutable Agent traces have independent versions;
+        # their writes must not invalidate research-market input snapshots.
+        from . import paper_portfolio, portfolio_agent, paper_analytics, agent_automation, local_agent, paper_forks, paper_next_open, jev_decision, research_desk, circuit_breakers, execution, position_stops
+        paper_portfolio.init_schema(db)
+        portfolio_agent.init_schema(db)
+        paper_analytics.init_schema(db)
+        agent_automation.init_schema(db)
+        local_agent.init_schema(db)
+        from . import local_agent_review
+        local_agent_review.init_schema(db)
+        paper_forks.init_schema(db)
+        paper_next_open.init_schema(db)
+        jev_decision.init_schema(db)
+        research_desk.init_schema(db)
+        circuit_breakers.init_schema(db)
+        execution.init_schema(db)
+        position_stops.init_schema(db)
+        from . import inbox_acknowledgements
+        inbox_acknowledgements.init_schema(db)
+        from . import broker_reconciliation
+        broker_reconciliation.init_schema(db)
+        from . import corporate_action_evidence
+        corporate_action_evidence.init_schema(db)
+        from . import allocation_research_receipts
+        allocation_research_receipts.init_schema(db)
+        from . import execution_sweep_history
+        execution_sweep_history.init_schema(db)
+        from . import research_integrity_receipts
+        research_integrity_receipts.init_schema(db)
+        from . import workflow_path_receipts
+        workflow_path_receipts.init_schema(db)
+        from . import execution_study_receipts
+        execution_study_receipts.ensure_schema(db)
+
 
 def input_revision(db=None):
     """A stable inputs-only token; scans and job progress do not change it."""

@@ -1,0 +1,46 @@
+.workflow-path-validation {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workflow-path-validation .actions {
+  flex-wrap: wrap;
+}
+.workflow-path-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.workflow-path-metrics dt {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-path-metrics dd {
+  margin: 6px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.2rem;
+}
+.workflow-path-chart {
+  margin: 20px 0;
+  color: var(--text);
+}
+.workflow-path-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.workflow-path-chart figcaption {
+  color: var(--muted);
+  font-size: var(--type-meta);
+}
+.workflow-path-validation th,
+.workflow-path-validation td {
+  vertical-align: top;
+}
+.workflow-path-validation .table-scroll {
+  max-width: 100%;
+}
+.workflow-path-validation code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

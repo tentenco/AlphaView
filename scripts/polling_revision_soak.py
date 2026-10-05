@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import subprocess
 import json
+import math
 import multiprocessing
 import os
 import socket
@@ -149,16 +150,18 @@ def cycle(db_path):
 
 
 def run(directory, seconds, interval, stop_directory=None):
-    if seconds <= 0 or interval <= 0:
+    if not math.isfinite(seconds) or not math.isfinite(interval) or seconds <= 0 or interval <= 0:
         raise ValueError('duration and interval must be positive')
     stop_directory = stop_directory or directory
     state = json.loads((stop_directory / 'state.json').read_text())
     directory.mkdir(parents=True, exist_ok=True)
-    harness_deadline = datetime.fromisoformat(state['deadline'].replace('Z', '+00:00'))
-    hard_deadline = datetime(2026, 9, 5, 3, 47, 25, tzinfo=timezone.utc)
-    deadline = min(harness_deadline, hard_deadline)
+    deadline = datetime.fromisoformat(state['deadline'].replace('Z', '+00:00'))
+    if deadline.tzinfo is None or deadline.utcoffset() is None:
+        raise ValueError('harness deadline must include a timezone')
     output = directory / 'polling-revision-soak.jsonl'
     summary_path = directory / 'polling-revision-soak-summary.json'
+    if output.exists() or summary_path.exists():
+        raise ValueError('existing soak evidence must not be overwritten; choose a new directory')
     started = time.monotonic()
     summary = {'started_at': datetime.now(timezone.utc).isoformat(), 'requested_seconds': seconds,
                'cycles': 0, 'failures': 0, 'status_reads': 0, 'invariants': 0, 'status_latency_ms_max': 0, 'network_disabled': True, 'synthetic_only': True}
@@ -176,10 +179,14 @@ def run(directory, seconds, interval, stop_directory=None):
             db.execute("INSERT INTO positions(symbol,name,shares,source,updated_at) VALUES('SYNTH','Synthetic',0,'synthetic','fixed')")
             db.execute("INSERT INTO jobs(id,kind,status,started_at,progress) VALUES('synthetic-job','scan','running','fixed','')")
         reason = 'duration'
-        while time.monotonic() - started < seconds:
+        while True:
+            # The harness stop marker and deadline are checked before the duration budget, so a
+            # slow setup (large schema, loaded machine) can never skip the check and run a cycle.
             remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
             if (stop_directory / 'STOP').exists() or remaining <= 60:
                 reason = 'harness_stop_or_deadline'
+                break
+            if time.monotonic() - started >= seconds:
                 break
             record = {'at': datetime.now(timezone.utc).isoformat(), 'cycle': summary['cycles']}
             cycle_start = time.monotonic()
@@ -213,6 +220,11 @@ def frozen_run(args):
     directory = args.directory.resolve()
     stop_directory = (args.stop_directory or args.directory).resolve()
     directory.mkdir(parents=True, exist_ok=True)
+    if any((directory / name).exists() for name in (
+        'polling-revision-soak.jsonl', 'polling-revision-soak-summary.json',
+        'polling-revision-source-manifest.json',
+    )):
+        raise ValueError('existing soak evidence must not be overwritten; choose a new directory')
     def git(*arguments):
         result = subprocess.run(['git', *arguments], cwd=ROOT, capture_output=True, text=True, timeout=5)
         return result.stdout.strip() if result.returncode == 0 else None
